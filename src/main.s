@@ -31,9 +31,6 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   ; which means it acknowledged the signal.
   nmi_signal: .res 1 
 
-  ; Controller input
-  buttons: .res 1
-
   ; Temp registers
   t1: .res 1
   t2: .res 1
@@ -53,13 +50,23 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
 .segment "OAM"
   oam: .res 256
 
+
 .segment "BSS"
   ; Nametable/palette buffers for PPU update
   nt_update:     .res 256 
   nt_update_len: .res 1
   pal_update:    .res 32
 
+  ; Which screen we're on
+  .enum Screen
+    Title = 0
+    SongSelect = 1
+    Game = 2
+  .endenum
+  current_screen: .res 1
+
 .include "ppu.s"
+.include "input.s"
 
 .segment "CODE"
 
@@ -100,12 +107,8 @@ vblankwait2:
   bit PPUSTATUS
   bpl vblankwait2
 
-  ; Enable rendering
-  lda #%10000000	; Enable NMI
-  sta PPUCTRL
-  lda #%00011110	; Enable Sprites and background
-  sta PPUMASK
-
+  MOVE PPUCTRL, #%10000000	; Enable NMI
+  MOVE PPUMASK, #%00011110	; Enable rendering
   jmp main
     
 nmi: 
@@ -116,8 +119,7 @@ nmi:
   beq :+
     jmp @nmi_end
 :
-  lda #1
-  sta nmi_lock
+  MOVE nmi_lock, #1 
 
   ; Rendering logic
   ; Check what the NMI signal is
@@ -127,11 +129,8 @@ nmi:
 :
   cmp #PpuSignal::DisableRendering 
   bne :+
-    lda #%00000000 ; Disable rendering then end exit NMI
-    sta PPUMASK
-    lda #0
-    sta nmi_signal
-    jmp @nmi_end
+    MOVE PPUMASK, #%00000000 ; Disable rendering then end exit NMI
+    jmp @ppu_update_done
 :
 
   ; otherwise the signal must've been PpuSignal::FrameRead
@@ -140,22 +139,18 @@ nmi:
   ldx #0
   
   @nt_update_loop: 
-    lda nt_update, X ; Write addr high byte
-    sta PPUADDR
+    MOVE PPUADDR, {nt_update, X} ; Write addr high byte
     inx
-    lda nt_update, X ; Write addr low byte
-    sta PPUADDR
+    MOVE PPUADDR, {nt_update, X} ; Write addr low byte
     inx
-    lda nt_update, X ; Write tile ID
-    sta PPUDATA
+    MOVE PPUDATA, {nt_update, X} ; Write tile ID    
     inx
     ; while (x < nt_update_len)
     cpx nt_update_len
     bcc @nt_update_loop
 
   ; Clear the buffer
-  lda #0
-  sta nt_update_len
+  MOVE nt_update_len, #0
 
 @scroll:
   lda #0
@@ -166,9 +161,7 @@ nmi:
   sta PPUSCROLL
   lda #0
   sta PPUSCROLL
-  ; enable rendering
-  lda #%00011110
-  sta PPUMASK
+  MOVE PPUMASK, #%00011110 ; Enable rendering
 
 @ppu_update_done:
   ; Done rendering, unlock NMI and acknowledge frame as complete
@@ -185,7 +178,7 @@ irq:
 
 palettes:
   ; Background Palette
-  .byte $0f, $20, $10, $00
+  .byte $0f, $10, $20, $30
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
@@ -196,24 +189,49 @@ palettes:
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
 
-str_hello: .asciiz "HELLO WORLD"
-
 main:
-  lda PPUSTATUS   ; reset write latch
-  lda #$3f        ; write palette base addr ($3F00)
-  sta PPUADDR
-  lda #$00
-  sta PPUADDR
+  lda PPUSTATUS       ; reset write latch
+  MOVE PPUADDR, #$3f ; write palette base addr ($3F00)
+  MOVE PPUADDR, #$00
+  
   ldx #$00
 @load_palettes:   ; Load all 20 bytes of palettes
-  lda palettes, X
-  sta PPUDATA
+  MOVE PPUDATA, {palettes, X}
   inx
   cpx #$20
   bne @load_palettes
-; Actual game loop
+  
+  ; Load title screen
+  jmp title_screen
+
+; === Title screen ===
+str_hello: .asciiz "8-Bit Sekai"
+str_press_start: .asciiz "PRESS START"
+
+title_screen:
+  ; handle input
+  jsr poll_input
+  lda buttons
+  ; If START is pressed, go to the song select screen
+  and #BUTTON_START
+  beq :+
+    jmp song_select
+:
+
+  ; Draw stuff
+  DRAW_STRING str_hello, 10, 14
+  DRAW_STRING str_press_start, 10, 16
+  jsr ppu_update
+  jmp title_screen
+
+; === Song select ===
+str_song_select: .asciiz "Song Select"
+
+song_select:
+  ; Clear the background first
+  jsr ppu_disable_rendering
+  jsr clear_background
 @loop:
-  DRAW_STRING str_hello, 12, 16
+  DRAW_STRING str_song_select, 10, 6
   jsr ppu_update
   jmp @loop
-

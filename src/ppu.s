@@ -6,19 +6,24 @@
 .endenum
 
 ; Turn off the PPU rendering for manual nametable updates
+; Clobbers A
 .proc ppu_disable_rendering
-  lda #PpuSignal::DisableRendering
-  sta nmi_signal
+  MOVE nmi_signal, #PpuSignal::DisableRendering
   :
     lda nmi_signal
     bne :-
   rts
 .endproc
 
+.macro ENABLE_RENDERING
+  lda #%00011110
+  sta PPUMASK
+.endmacro
+
 ; Block until NMI returns
+; Clobbers A
 .proc ppu_update
-  lda #PpuSignal::FrameReady
-  sta nmi_signal
+  MOVE nmi_signal, #PpuSignal::FrameReady
   :
     lda nmi_signal
     bne :-
@@ -141,10 +146,8 @@
   lda PPUSTATUS ; clear write latch
 
   ; Set base address for the first nametable
-  lda #$20
-  sta PPUADDR
-  lda #$00
-  sta PPUADDR
+  MOVE PPUADDR, #$20
+  MOVE PPUADDR, #$00
 
   ldy #30  ; 30 rows
   :
@@ -192,11 +195,10 @@
 .endproc
 
 .macro DRAW_STRING static_str, tile_x, tile_y
-  lda #<static_str ; write low byte
-  sta ptr
-  lda #>static_str ; write high byte
-  sta ptr+1
+  MOVE ptr,     #<static_str ; write low byte
+  MOVE {ptr+1}, #>static_str ; write high byte
   ldx #tile_x
   ldy #tile_y
   jsr draw_string
 .endmacro
+

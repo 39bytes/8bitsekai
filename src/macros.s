@@ -1,6 +1,6 @@
 ; Shortcut for lda + sta boilerplate
 ; Clobbers A
-.macro MOVE from, to
+.macro MOVE to, from
   lda from
   sta to
 .endmacro
