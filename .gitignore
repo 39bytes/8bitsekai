@@ -1,0 +1,5 @@
+*.o
+*.nes
+*.nes*
+*.fdb
+.DS_Store
