@@ -83,6 +83,13 @@
   rts
 .endproc
 
+.macro DRAW_TILE tile_id, tile_x, tile_y
+  lda #tile_id
+  ldx #tile_x
+  ldy #tile_y
+  jsr ppu_update_tile
+.endmacro
+
 ; Update a byte in the nametable
 ; XY = A
 .proc ppu_update_byte
@@ -194,6 +201,7 @@
   rts
 .endproc
 
+; Draw a string literal at immediate tile coordinates
 .macro DRAW_STRING static_str, tile_x, tile_y
   MOVE ptr,     #<static_str ; write low byte
   MOVE {ptr+1}, #>static_str ; write high byte

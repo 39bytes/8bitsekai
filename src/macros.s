@@ -46,3 +46,20 @@
   :
 .endmacro
 
+; Decrement `var`, wrapping to `wrap_to` if var is already 0.
+.macro DEC_WRAP var, wrap_to
+  dec var
+  bpl :+
+    MOVE var, wrap_to
+:
+.endmacro
+
+; Increment `var`, wrapping to 0 if `var >= max` after incrementing.
+.macro INC_WRAP var, max
+  inc var
+  lda var
+  cmp max
+  bcc :+
+    MOVE var, #0
+:
+.endmacro

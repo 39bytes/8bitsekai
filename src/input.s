@@ -1,5 +1,6 @@
 .segment "ZEROPAGE"
   buttons: .res 1
+  last_frame_buttons: .res 1
 
 .segment "CODE"
 ; --------------
@@ -37,3 +38,16 @@ BUTTON_A      = 1 << 7
   rts
 .endproc
 
+.macro IS_PRESSED btn
+  lda buttons
+  and #btn
+.endmacro
+
+; Zero flag will be set if false,
+; unset if true.
+.macro IS_JUST_PRESSED btn
+  lda last_frame_buttons
+  eor #$FF
+  and buttons
+  and #btn
+.endmacro

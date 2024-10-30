@@ -57,14 +57,6 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   nt_update_len: .res 1
   pal_update:    .res 32
 
-  ; Which screen we're on
-  .enum Screen
-    Title = 0
-    SongSelect = 1
-    Game = 2
-  .endenum
-  current_screen: .res 1
-
 .include "ppu.s"
 .include "input.s"
 
@@ -189,6 +181,12 @@ palettes:
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
 
+.enum Tile
+  Blank = $00
+  LaneDark = $02
+  LaneCursor = $03
+.endenum
+
 main:
   lda PPUSTATUS       ; reset write latch
   MOVE PPUADDR, #$3f ; write palette base addr ($3F00)
@@ -200,38 +198,250 @@ main:
   inx
   cpx #$20
   bne @load_palettes
-  
+
   ; Load title screen
   jmp title_screen
 
-; === Title screen ===
-str_hello: .asciiz "8-Bit Sekai"
+; ================
+; | Title Screen |
+; ================
+.segment "BSS"
+  menu_cursor_position: .res 1
+
+.segment "CODE"
+
+str_game_title:  .asciiz "8-Bit Sekai"
 str_press_start: .asciiz "PRESS START"
 
 title_screen:
   ; handle input
   jsr poll_input
-  lda buttons
-  ; If START is pressed, go to the song select screen
-  and #BUTTON_START
+
+  IS_JUST_PRESSED BUTTON_START
   beq :+
+    MOVE last_frame_buttons, buttons
     jmp song_select
 :
+  MOVE last_frame_buttons, buttons
 
   ; Draw stuff
-  DRAW_STRING str_hello, 10, 14
+  ; DRAW_STRING str_game_title, 10, 14
   DRAW_STRING str_press_start, 10, 16
   jsr ppu_update
   jmp title_screen
 
-; === Song select ===
+; ===============
+; | Song Select |
+; ===============
 str_song_select: .asciiz "Song Select"
+
+; Songs
+str_lower:	.asciiz "Lower"
+str_mesmerizer: .asciiz "Mesmerizer"
+str_senbonzakura: .asciiz "Senbonzakura"
+str_rokuchounen: .asciiz "6 Trillion Years"
+
+N_MENU_ITEMS = 4
+MENU_X = 8
+MENU_Y = 9
+
+menu_item_labels:
+  .addr str_lower      
+  .addr str_mesmerizer 
+  .addr str_senbonzakura
+  .addr str_rokuchounen
+
+menu_item_addrs:
 
 song_select:
   ; Clear the background first
   jsr ppu_disable_rendering
   jsr clear_background
 @loop:
+  ; Clear the current cursor position
+  ldx #(MENU_X - 1)
+  lda #MENU_Y
+  clc
+  adc menu_cursor_position
+  tay
+  lda #Tile::Blank
+  jsr ppu_update_tile
+
+  ; Input handling
+  jsr poll_input
+
+  IS_JUST_PRESSED BUTTON_UP
+  beq @skip_up
+    DEC_WRAP menu_cursor_position, #(N_MENU_ITEMS-1)
+@skip_up:
+
+  IS_JUST_PRESSED BUTTON_DOWN
+  beq @skip_down
+    INC_WRAP menu_cursor_position, #N_MENU_ITEMS
+@skip_down:
+
+  IS_JUST_PRESSED BUTTON_START
+  beq @skip_start
+    ; TODO: make the selection actually mean something
+    MOVE last_frame_buttons, buttons
+    jmp gameplay
+@skip_start:
+
+  MOVE last_frame_buttons, buttons
+
+  ; Draw the 'Song Select' title and the songs list
   DRAW_STRING str_song_select, 10, 6
+  jsr draw_songs_list
+  jsr draw_cursor
+
   jsr ppu_update
   jmp @loop
+  
+; Draw the menu items (songs) in the song select screen.
+; Clobbers x
+.proc draw_songs_list
+  PUSH s1
+
+  ldx #0
+  MOVE s1, #MENU_Y
+@loop:
+  MOVE ptr, {menu_item_labels, x} ; string low byte
+  inx
+  MOVE {ptr+1}, {menu_item_labels, x} ; string high byte
+  inx
+
+  ; push the index
+  txa
+  pha
+
+  ldx #MENU_X
+  ldy s1
+  jsr draw_string
+  inc s1
+
+  ; pop it back
+  pla
+  tax
+  cpx #(2 * N_MENU_ITEMS)
+  bne @loop
+  
+  POP s1
+  rts
+.endproc
+
+.proc draw_cursor
+  ldx #(MENU_X - 1)
+  ; y = 8 + menu_cursor_position
+  lda #MENU_Y
+  clc
+  adc menu_cursor_position
+  tay
+
+  lda #'>'
+
+  jsr ppu_update_tile
+  rts
+.endproc
+
+; ============
+; | Gameplay |
+; ============
+
+.segment "ZEROPAGE"
+  gameplay_cursor_position: .res 1 ; Lane index of the beginning
+
+CURSOR_WIDTH = 2 ; Lane width of the cursor
+N_LANES = 8    ; Total number of lanes
+LANE_WIDTH = 2 ; Tile width of 1 lane
+LANE_X = 8 ; X position of the start of the lanes
+LANE_Y = 28 ; Y position of the lanes
+  
+.segment "CODE"
+
+str_gameplay: .asciiz "Gameplay"
+
+gameplay:
+  ; Clear the background first
+  jsr ppu_disable_rendering
+  jsr clear_background
+@loop:
+  jsr handle_gameplay_input
+
+  DRAW_STRING str_gameplay, 12, 0
+  ; Debug info
+  ldx #2
+  ldy #2
+  lda gameplay_cursor_position
+  clc
+  adc #'0'
+  jsr ppu_update_tile
+
+  jsr draw_lanes
+  
+  jsr ppu_update
+  jmp @loop
+
+.proc draw_lanes
+  PUSH s1
+  PUSH s2
+
+  cursor_start = s1
+  cursor_end = s2
+
+  ; Compute the start lane of cursor
+  ; gameplay_cursor_position * 2 + LANE_X
+  lda gameplay_cursor_position ; TODO: figure out how to also do this for 3 width
+  asl
+  clc
+  adc #LANE_X
+  sta cursor_start
+
+  ; Compute end lane of cursor
+  ; CURSOR_WIDTH * 2 added to start lane
+  ldx #CURSOR_WIDTH
+  stx cursor_end
+  asl cursor_end
+  clc 
+  adc cursor_end
+  sta cursor_end
+
+  ldx #LANE_X
+  ldy #LANE_Y
+@loop:
+  ; if cursor_start <= x < cursor_end
+  cpx cursor_start
+  bcc @dark
+  cpx cursor_end
+  bcs @dark
+@light:
+  lda #Tile::LaneCursor ; use the light color
+  jmp @draw
+@dark:
+  lda #Tile::LaneDark   ; else use the dark color
+@draw:
+  jsr ppu_update_tile   ; draw the tile
+  inx
+  cpx #(LANE_X + N_LANES * LANE_WIDTH) ; loop until all lanes covered
+  bcc @loop
+
+  POP s2
+  POP s1
+  rts
+.endproc
+
+.proc handle_gameplay_input
+  jsr poll_input
+
+  IS_JUST_PRESSED BUTTON_LEFT
+  beq @skip_left
+    DEC_WRAP gameplay_cursor_position, #(N_LANES-1) ; Move the cursor left
+@skip_left:
+
+  IS_JUST_PRESSED BUTTON_RIGHT
+  beq @skip_right
+    INC_WRAP gameplay_cursor_position, #N_LANES     ; Move the cursor right
+@skip_right:
+
+  MOVE last_frame_buttons, buttons
+  rts
+.endproc
