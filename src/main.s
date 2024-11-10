@@ -135,26 +135,27 @@ nmi:
 :
   cmp #PpuSignal::DisableRendering 
   bne :+
-    MOVE PPUMASK, #%00000000 ; Disable rendering then end exit NMI
+    MOVE PPUMASK, #%00000000 ; Disable rendering then exit NMI
     jmp @ppu_update_done
 :
   ; Upload sprites via OAM DMA
-  ; MOVE OAMADDR, #0
-  ; MOVE OAMDMA, #>oam
+  MOVE OAMADDR, #0
+  MOVE OAMDMA, #>oam
 
   ; Otherwise the signal must've been PpuSignal::FrameRead
 
   ; Update palettes with the buffered palette updates
-  ; MOVE PPUCTRL, #(NMI_ENABLE | SPRITE_PT_RIGHT) ; Ensure that NT increment is horizontal
-  ; lda PPUSTATUS      ; Clear write latch
-  ; MOVE PPUADDR, #$3F ; Write palette base address
-  ; MOVE PPUADDR, #$00
-  ; ldx #0
-  ; @palette_update_loop:
-  ;   MOVE PPUDATA, {palette, X}
-  ;   inx
-  ;   cpx #32
-  ;   bcc @palette_update_loop
+  MOVE PPUCTRL, #(NMI_ENABLE | SPRITE_PT_RIGHT) ; Ensure that NT increment is horizontal
+  lda PPUSTATUS      ; Clear write latch
+  MOVE PPUADDR, #$3F ; Write palette base address
+  MOVE PPUADDR, #$00
+
+  ldx #0
+  @palette_update_loop:
+    MOVE PPUDATA, {palette, X}
+    inx
+    cpx #32
+    bcc @palette_update_loop
 
   ; Update the nametables with the buffered tile updates
   ldx #0
@@ -179,6 +180,7 @@ nmi:
   lda scroll_nt
   ora #(NMI_ENABLE | SPRITE_PT_RIGHT) ; Append other flags
   sta PPUCTRL
+  lda PPUSTATUS      ; Clear write latch
   lda #0        ; X coordinate for first write, always 0
   sta PPUSCROLL 
   lda scroll_y  ; Y coordinate for second write

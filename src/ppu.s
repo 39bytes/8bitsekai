@@ -37,6 +37,7 @@
   rts
 .endproc
 
+
 ; Set tile at X/Y to A next time ppu_update is called
 ; Can be used with rendering on
 ; Preserves X, Y and A
@@ -118,6 +119,42 @@
   rts
 .endproc
 
+; Set tile at X/Y to A immediately
+; Must be used with rendering off
+;  Y =  0- 31 nametable $2000
+;  Y = 32- 63 nametable $2400
+;  Y = 64- 95 nametable $2800
+;  Y = 96-127 nametable $2C00
+.proc ppu_set_tile
+  pha
+
+  lda PPUSTATUS ; reset latch
+  ; The address is gonna have the form 0010 NNYY YYYX XXXX
+  ; Compute high byte
+  tya           
+  lsr
+  lsr
+  lsr
+  ora #$20 
+  sta PPUADDR
+  ; Compute low byte
+  tya
+  asl
+  asl
+  asl
+  asl
+  asl
+  sta t1
+  txa 
+  ora t1
+  sta PPUADDR
+  ; Write the tile ID
+  pla
+  sta PPUDATA
+
+  rts
+.endproc
+
 ; 32x32 -> 16x16
 ; Update an attribute byte to A where the top left is X/Y
 ; y >> 1 |
@@ -181,7 +218,8 @@
 ; ptr - Address of null terminated string
 ; X - Tile X
 ; Y - Tile Y
-.proc draw_string
+.macro DRAW_STRING_IMPL name, proc
+.proc name
   ; Push saved registers
   PUSH s1
   PUSH s2
@@ -195,7 +233,7 @@
   beq @loop_end
   sty s2     ; Preserve the y index
   ldy tile_y
-  jsr ppu_update_tile
+  jsr proc
   ldy s2
   
   inx        ; x++
@@ -207,6 +245,10 @@
   POP s1
   rts
 .endproc
+.endmacro
+
+DRAW_STRING_IMPL draw_string, ppu_update_tile
+DRAW_STRING_IMPL draw_string_imm, ppu_set_tile
 
 ; Draw a string literal at immediate tile coordinates
 .macro DRAW_STRING static_str, tile_x, tile_y
@@ -215,5 +257,13 @@
   ldx #tile_x
   ldy #tile_y
   jsr draw_string
+.endmacro
+
+.macro DRAW_STRING_IMM static_str, tile_x, tile_y
+  MOVE ptr,     #<static_str ; write low byte
+  MOVE {ptr+1}, #>static_str ; write high byte
+  ldx #tile_x
+  ldy #tile_y
+  jsr draw_string_imm
 .endmacro
 

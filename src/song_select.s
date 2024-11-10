@@ -25,6 +25,10 @@ song_select:
   ; Clear the background first
   jsr ppu_disable_rendering
   jsr clear_background
+
+  ; Draw the 'Song Select' title and the songs list
+  DRAW_STRING_IMM str_song_select, 10, 6
+  jsr draw_songs_list
 @loop:
   ; Clear the current cursor position
   ldx #(MENU_X - 1)
@@ -57,9 +61,6 @@ song_select:
 
   MOVE last_frame_buttons, buttons
 
-  ; Draw the 'Song Select' title and the songs list
-  DRAW_STRING str_song_select, 10, 6
-  jsr draw_songs_list
   jsr draw_cursor
 
   jsr ppu_update
@@ -84,7 +85,7 @@ song_select:
 
   ldx #MENU_X
   ldy s1
-  jsr draw_string
+  jsr draw_string_imm
   inc s1
 
   ; pop it back
