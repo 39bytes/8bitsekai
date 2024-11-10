@@ -5,6 +5,13 @@
   DisableRendering = 2
 .endenum
 
+.enum Tile
+  Blank = $00
+  LaneDark = $02
+  LaneCursor = $03
+  Note = $04
+.endenum
+
 ; Turn off the PPU rendering for manual nametable updates
 ; Clobbers A
 .proc ppu_disable_rendering

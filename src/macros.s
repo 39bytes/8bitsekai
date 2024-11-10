@@ -63,3 +63,20 @@
     MOVE var, #0
 :
 .endmacro
+
+.macro MOVE16 to, from
+  lda from
+  sta to
+  lda from+1
+  sta to+1
+.endmacro
+
+
+.macro MOVE24 to, from
+  lda from
+  sta to
+  lda from+1
+  sta to+1
+  lda from+2
+  sta to+2
+.endmacro
