@@ -71,7 +71,6 @@
   sta to+1
 .endmacro
 
-
 .macro MOVE24 to, from
   lda from
   sta to
@@ -79,4 +78,11 @@
   sta to+1
   lda from+2
   sta to+2
+.endmacro
+
+.macro SET_SPRITE addr, sprite_y, tile_id, attr, sprite_x
+  MOVE addr, sprite_y
+  MOVE addr+1, tile_id
+  MOVE addr+2, attr
+  MOVE addr+3, sprite_x
 .endmacro

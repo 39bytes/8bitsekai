@@ -13,6 +13,7 @@
   ; Need some kind of note queue for hits...
   
 
+TILE_WIDTH = 8
 CURSOR_WIDTH = 2 ; Lane width of the cursor
 N_LANES = 8      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
@@ -33,14 +34,21 @@ gameplay:
   ; Clear the background first
   jsr ppu_disable_rendering
   jsr clear_background
+  ; jsr draw_lanes
+  
+  ; Setup cursor sprite
+  SET_SPRITE gameplay_cursor, #224, #Sprite::Cursor, #0, #128   ; Left
+  SET_SPRITE gameplay_cursor+4, #224, #Sprite::Cursor, #0, #136 ; Left 2
+  SET_SPRITE gameplay_cursor+8, #224, #Sprite::Cursor, #0, #144 ; Right 
+  SET_SPRITE gameplay_cursor+12, #224, #Sprite::Cursor, #0, #152 ; Right 2
+
   ; Reset the timer
   lda #0
   sta timer
   sta timer+1
   sta timer+2
   ; Setup scroll Y to bottom of screen initially
-  ; MOVE scroll_y, #239 
-  ; MOVE scroll_nt, $02
+  MOVE scroll_y, #239 
   ; Compute map relevant information
   ; Read BPM and convert it to timing units
   lda chart
@@ -67,74 +75,13 @@ gameplay:
   ; jsr ppu_update_tile
   DRAW_TILE Tile::Note, 8, 0
 
-  ; jsr draw_lanes
   
   jsr ppu_update
   jmp @loop
 
-; Draw the gameplay lanes and the cursor.
-.proc draw_lanes
-  ldx #LANE_X
-  ldy #0
-
-@loop:
-  MOVE {oam, Y}, #LANE_Y         ; y coord
-  iny
-  MOVE {oam, Y}, #Tile::LaneDark ; tile id
-  iny
-  MOVE {oam, Y}, #0              ; attributes
-  iny
-  MOVE {oam, Y}, #LANE_X         ; attributes
-  iny
-  inx
-  cpy #N_LANES
-  bcc @loop
-
-;   PUSH s1
-;   PUSH s2
-;
-;   cursor_start = s1
-;   cursor_end = s2
-;
-;   ; Compute the start lane of cursor
-;   ; gameplay_cursor_position * 2 + LANE_X
-;   lda gameplay_cursor_position ; TODO: figure out how to also do this for 3 width
-;   asl
-;   clc
-;   adc #LANE_X
-;   sta cursor_start
-;
-;   ; Compute end lane of cursor
-;   ; CURSOR_WIDTH * 2 added to start lane
-;   ldx #CURSOR_WIDTH
-;   stx cursor_end
-;   asl cursor_end
-;   clc 
-;   adc cursor_end
-;   sta cursor_end
-;
-;   ldx #LANE_X
-;   ldy #LANE_Y
-; @loop:
-;   ; if cursor_start <= x < cursor_end
-;   cpx cursor_start
-;   bcc @dark
-;   cpx cursor_end
-;   bcs @dark
-; @light:
-;   lda #Tile::LaneCursor ; use the light color
-;   jmp @draw
-; @dark:
-;   lda #Tile::LaneDark   ; else use the dark color
-; @draw:
-;   jsr ppu_update_tile   ; draw the tile
-;   inx
-;   cpx #(LANE_X + N_LANES * LANE_WIDTH) ; loop until all lanes covered
-;   bcc @loop
-;
-;   POP s2
-;   POP s1
-;   rts
+; Draw the vertical lines outlining the lanes in the playfield.
+.proc draw_playfield
+  ; TODO:
 .endproc
 
 ; Input handler for charts
@@ -151,9 +98,32 @@ gameplay:
     INC_WRAP gameplay_cursor_position, #N_LANES     ; Move the cursor right
 @skip_right:
 
+  jsr update_cursor_position
   MOVE last_frame_buttons, buttons
   rts
 .endproc
+
+.proc update_cursor_position
+  ; Cursor should be placed at LANE_START + (cursor_pos * 8)
+  lda gameplay_cursor_position
+  asl
+  asl
+  asl
+  asl
+  clc
+  adc #(LANE_X * TILE_WIDTH)
+
+  sta gameplay_cursor+3 
+  adc #8
+  sta gameplay_cursor+7
+  adc #8
+  sta gameplay_cursor+11
+  adc #8
+  sta gameplay_cursor+15
+
+  rts
+.endproc
+
 
 ; 24 bit addition for the timer
 .proc tick_timer

@@ -12,6 +12,11 @@
   Note = $04
 .endenum
 
+.enum Sprite
+  Blank = $00
+  Cursor = $03
+.endenum
+
 ; Turn off the PPU rendering for manual nametable updates
 ; Clobbers A
 .proc ppu_disable_rendering

@@ -19,7 +19,8 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   .addr irq
 
 .segment "TILES"
-  .incbin "../assets/tiles.chr"
+  .incbin "../assets/bg_tiles.chr"
+  .incbin "../assets/spr_tiles.chr"
 
 .segment "ZEROPAGE"
   ; NMI state
@@ -57,9 +58,9 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   palette:       .res 32
 
 .segment "OAM"
-  oam: .res 256
-    ; sprite0: .res 4
-    ; gameplay_lanes: .res 32
+  oam:
+    sprite0: .res 4
+    gameplay_cursor: .res 16
 
 .include "ppu.s"
 .include "input.s"
@@ -138,11 +139,11 @@ nmi:
     MOVE PPUMASK, #%00000000 ; Disable rendering then exit NMI
     jmp @ppu_update_done
 :
+
+  ; Otherwise the signal must've been PpuSignal::FrameRead
   ; Upload sprites via OAM DMA
   MOVE OAMADDR, #0
   MOVE OAMDMA, #>oam
-
-  ; Otherwise the signal must've been PpuSignal::FrameRead
 
   ; Update palettes with the buffered palette updates
   MOVE PPUCTRL, #(NMI_ENABLE | SPRITE_PT_RIGHT) ; Ensure that NT increment is horizontal

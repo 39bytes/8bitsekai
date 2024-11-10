@@ -7,4 +7,5 @@ run: build
     fceux {{rom_name}}
 
 import-tiles:
-    mv ~/.wine/drive_c/8bitsekai\ bg\ tiles.chr assets/tiles.chr
+    cp ~/.wine/drive_c/8bitsekai\ bg\ tiles.chr assets/bg_tiles.chr
+    cp ~/.wine/drive_c/8bitsekai\ spr\ tiles.chr assets/spr_tiles.chr
