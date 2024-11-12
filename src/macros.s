@@ -36,6 +36,22 @@
   pla
 .endmacro
 
+; Push the X and Y registers to the stack
+.macro PUSH_XY
+  txa
+  pha
+  tya
+  pha
+.endmacro
+
+; Pop the Y and X registers from the stack
+.macro POP_YX
+  pla
+  tay
+  pla
+  tax
+.endmacro
+
 .macro IF_EQ val1, val2
   lda val1
   cmp val2

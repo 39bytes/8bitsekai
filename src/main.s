@@ -22,8 +22,7 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   .incbin "../assets/bg_tiles.chr"
   .incbin "../assets/spr_tiles.chr"
 
-.segment "ZEROPAGE"
-  ; NMI state
+.segment "ZEROPAGE" ; NMI state
   nmi_lock: .res 1 ; Prevent NMI re-entry
   ; Signals for the NMI handler
   ; If set to PpuSignal::FrameReady, trigger a frame update (write nt_update)
@@ -35,21 +34,44 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   scroll_y: .res 1  ; Only using vertical scrolling, X is always 0
   scroll_nt: .res 1 ; Bit 1 of PPUCTRL
 
-  ; Temp registers
-  t1: .res 1
-  t2: .res 1
-  t3: .res 1
-  t4: .res 1
-  ; Saved registers
-  s1: .res 1
-  s2: .res 1
-  s3: .res 1
-  s4: .res 1
-  ; For indirect indexing
+  ; Temp registers - volatile
+  t1_16:
+    t1: .res 1
+    t2: .res 1
+  t2_16:
+    t3: .res 1
+    t4: .res 1
+
+  ; Saved registers - non-volatile
+  s1_16:
+    s1: .res 1
+    s2: .res 1
+  s2_16:
+    s3: .res 1
+    s4: .res 1
+
+  ; For indirect indexing - volatile
   ptr: .res 2
-  ; Parameter registers
-  p1: .res 1
-  p2: .res 1
+
+  ; Parameter registers - volatile
+  p1_24:
+    p1_16:
+      p1: .res 1
+      p2: .res 1
+    p2_16:
+      p3: .res 1
+  p2_24:
+      p4: .res 1
+      p5: .res 1
+      p6: .res 1
+
+  ; Return registers - volatile
+  r1_24:
+    r1_16:
+      r1: .res 1
+      r2: .res 1
+      r3: .res 1
+
 
 .segment "BSS"
   ; Nametable buffers/palette  for PPU update

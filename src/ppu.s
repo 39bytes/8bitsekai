@@ -10,6 +10,8 @@
   LaneDark = $02
   LaneCursor = $03
   Note = $04
+  PlayfieldBoundaryLeft = $05
+  PlayfieldBoundaryRight = $06
 .endenum
 
 .enum Sprite
@@ -130,8 +132,11 @@
 ;  Y = 32- 63 nametable $2400
 ;  Y = 64- 95 nametable $2800
 ;  Y = 96-127 nametable $2C00
-.proc ppu_set_tile
-  pha
+; Preserves A, X, Y
+.proc ppu_set_tile 
+  sta t1 ; Preserve registers
+  stx t2
+  sty t3
 
   lda PPUSTATUS ; reset latch
   ; The address is gonna have the form 0010 NNYY YYYX XXXX
@@ -149,14 +154,16 @@
   asl
   asl
   asl
-  sta t1
+  sta t4
   txa 
-  ora t1
+  ora t4
   sta PPUADDR
   ; Write the tile ID
-  pla
+  lda t1
   sta PPUDATA
-
+  
+  ldx t2 ; Restore registers
+  ldy t3
   rts
 .endproc
 
