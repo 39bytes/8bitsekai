@@ -49,6 +49,9 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   s2_16:
     s3: .res 1
     s4: .res 1
+  s5: .res 1
+  s6: .res 1
+  
 
   ; For indirect indexing - volatile
   ptr: .res 2
@@ -86,6 +89,7 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
 
 .include "ppu.s"
 .include "input.s"
+.include "math.s"
 
 .segment "CODE"
 

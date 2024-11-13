@@ -10,18 +10,20 @@ str_game_title:  .asciiz "8-Bit Sekai"
 str_press_start: .asciiz "PRESS START"
 
 title_screen:
-  ; handle input
+  DRAW_STRING str_press_start, 10, 16
+  ; LOAD24 p1_16, #'0', #'6', #'2'
+
+@loop:
   jsr poll_input
 
-  IS_JUST_PRESSED BUTTON_START
+  ; If start is pressed, go to the song select screen
+  IS_JUST_PRESSED BUTTON_START 
   beq :+
     MOVE last_frame_buttons, buttons
     jmp song_select
 :
+
   MOVE last_frame_buttons, buttons
 
-  ; Draw stuff
-  ; DRAW_STRING str_game_title, 10, 14
-  DRAW_STRING str_press_start, 10, 16
   jsr ppu_update
-  jmp title_screen
+  jmp @loop

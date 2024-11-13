@@ -96,6 +96,15 @@
   sta to+2
 .endmacro
 
+.macro LOAD24 to, low_byte, mid_byte, high_byte
+  lda low_byte
+  sta to
+  lda mid_byte
+  sta to+1
+  lda high_byte
+  sta to+2
+.endmacro
+
 .macro SET_SPRITE addr, sprite_y, tile_id, attr, sprite_x
   MOVE addr, sprite_y
   MOVE addr+1, tile_id

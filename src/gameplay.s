@@ -1,17 +1,17 @@
-.include "math.s"
-
 ; ============
 ; | Gameplay |
 ; ============
 
 .segment "ZEROPAGE"
+  frame: .res 1 ; The current frame count
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
   ; --- Chart Relevant Data ---
   ; I'm defining a 'timing unit' to be 1/240 of a beat.
-  timer: .res 3 ; For note timing, measured in timing units
-  frame_units: .res 1 ; How many timing units occur in 1 frame
-  chart_length: .res 2 ; The number of notes in the chart
-  note_ptr: .res 2 ; Where we are in the chart in terms of notes
+  timer: .res 3         ; For note timing, measured in timing units
+  frame_units: .res 1   ; How many timing units occur in 1 frame
+  chart_length: .res 2  ; The number of notes in the chart
+  notes_spawned: .res 2 ; The number of notes we've already spawned
+  note_ptr: .res 2      ; Pointer to the most recently non-spawned note
   
   ; Need some kind of note queue for hits...
   live_notes_head_index: .res 1
@@ -87,6 +87,10 @@ gameplay:
   jsr tick_timer       
   jsr inc_scroll
   jsr handle_gameplay_input
+
+  jsr scroll_position
+  lda t1
+  DEBUG_VAR t1, 2, 2
 
   jsr ppu_update
   jmp @loop
@@ -202,29 +206,39 @@ gameplay:
   rts
 .endproc
 
-; Load at most 8 ready notes into live_notes and also spawn them on the bg
+; Load all ready notes into live_notes and also spawn them on the bg
 .proc load_notes
   PUSH s1
   PUSH s2
   PUSH s3
   PUSH s4
+  PUSH s5
 
   lanes = s1
   timing1 = s2
   timing2 = s3
   timing3 = s4
 
-  ldx #0 ; X stores the actual memory offset
-  ldy #0 ; Y stores the note offset
-@loop:
-  MOVE lanes, {note_ptr, X} ; Read lane byte
-  inx
-  MOVE p1_24, {note_ptr, X} ; Read the 3 timing bytes
-  inx
-  MOVE p1_24+1, {note_ptr, X} 
-  inx
-  MOVE p1_24+2, {note_ptr, X} 
-  inx
+  mem_offset = s5     ; The actual memory offset from the current note pointer value
+  MOVE mem_offset, #0
+
+loop:
+  ; If we already reached the end of the map then break
+  MOVE16 p1_16, notes_spawned
+  MOVE16 p2_16, chart_length
+  jsr cmp16
+  bcs end
+
+  ldy mem_offset
+  MOVE lanes, {(note_ptr), Y} ; Read lane byte
+  iny
+  MOVE p1_24, {(note_ptr), Y} ; Read the 3 timing bytes
+  iny
+  MOVE p1_24+1, {(note_ptr), Y} 
+  iny
+  MOVE p1_24+2, {(note_ptr), Y} 
+  iny
+  sta mem_offset
   ; Save the timing for later
   MOVE24 timing1, p1_24
 
@@ -238,33 +252,83 @@ gameplay:
   jsr cmp24
   ; Notes are in chronological order so if it's too early for this one
   ; then we can just return early
-  bcs :+ 
-    rts
-:
-  ; Add this to the live note queue
+  bcc end
+  ; If we get here, then the note should be spawned
+  inc notes_spawned
+
+  ; Add this note to the live note queue
   ldx live_notes_tail_index
   MOVE {live_notes_timing1, X}, timing1
   MOVE {live_notes_timing2, X}, timing2
   MOVE {live_notes_timing3, X}, timing3
-  ; Compute the scroll tile
+  MOVE {live_notes_nt_x, X}, lanes
+  ; Compute the scroll tile Y
   jsr scroll_position
-  ; TODO: left off here
-
-  
-  lda scroll_y
-  sta live_notes_nt_y
-
+  sta live_notes_nt_y, X
   inc live_notes_tail_index
+  tay ; Also move this into the Y register for drawing tiles
+
+  lda lanes
+  jsr draw_note
+
+  jmp loop
+
+end:
+  ; Commit the memory offset, subtracting 4 to compensate for overadding
+  lda mem_offset
+  sec
+  sbc #4
+  sta p2_16
+  lda #0
+  sta p2_16+1
+
+  MOVE p1_16, note_ptr
+  jsr add16
+  MOVE note_ptr, r1_16
   
-  iny
-  cpy #8
-  bcc @loop
-  
-  ; TODO:
+  POP s5
   POP s4
   POP s3
   POP s2
   POP s1
+  rts
+.endproc
+
+; Draws a single note. 
+; ---Parameters---
+; A - The lane byte of the note.
+; Y - The Y coordinate to draw it at
+.proc draw_note
+  lanes = t1
+  note_start = t2
+  note_end = t3
+
+  sta lanes
+
+  ; The left most end point is the top 4 bits (lanes >> 4)
+  lsr
+  lsr
+  lsr
+  lsr
+  ; Multiplied by 2
+  asl
+  sta note_start
+  ; The right end point is the bottom 4 bits so mask them off
+  lda lanes
+  and #$0F
+  ; Multiplied by 2
+  asl
+  sta note_end
+
+  ; Now we draw all of those tiles
+  ldx note_start
+  lda #Tile::Note
+@draw_note:
+  jsr ppu_update_tile
+  inx
+  cpx note_end
+  bcc @draw_note
+
   rts
 .endproc
 

@@ -279,3 +279,47 @@ DRAW_STRING_IMPL draw_string_imm, ppu_set_tile
   jsr draw_string_imm
 .endmacro
 
+; Draws a number encoded in binary coded decimal onto the screen.
+; ---Parameters---
+; X - X position of the first digit
+; Y - Y position
+; p1_24 - The number in binary coded decimal (ascii)
+.proc draw_bcd_number
+  PUSH s1
+  PUSH s2
+
+  MOVE s1, #0
+  sty s2
+
+  ldy s1
+  lda p1_24, Y
+  ldy s2
+  jsr ppu_update_tile
+  inc s1
+  inx
+
+  ldy s1
+  lda p1_24, Y
+  ldy s2
+  jsr ppu_update_tile
+  inc s1
+  inx
+
+  ldy s1
+  lda p1_24, Y
+  ldy s2
+  jsr ppu_update_tile
+
+  POP s1
+  POP s2
+  rts
+.endproc
+
+.macro DEBUG_VAR var, tile_x, tile_y
+  lda var
+  jsr hex8_to_decimal
+  MOVE24 p1_24, r1_24
+  ldx #tile_x
+  ldy #tile_y
+  jsr draw_bcd_number
+.endmacro
