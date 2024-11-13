@@ -1,6 +1,3 @@
-.ifndef MATH
-.define MATH
-
 ; Math operations do not modify volatile registers so callers
 ; do not have to preserve the registers before calling them.
 
@@ -138,4 +135,31 @@
   rts
 .endproc
 
-.endif
+.proc hex8_to_decimal
+  ldy #'0'
+
+  hundreds = r1_24
+  tens = r1_24+1
+  ones = r1_24+2
+  sty hundreds
+  sty tens
+
+@calc_hundreds:
+  cmp #100
+  bcc @calc_tens
+  sbc #100
+  inc hundreds
+  bne @calc_hundreds
+@calc_tens:
+  cmp #10
+  bcc @calc_ones
+  sbc #10
+  inc tens
+  bne @calc_tens
+@calc_ones:
+  clc
+  adc #'0'
+  sta ones
+
+  rts
+.endproc
