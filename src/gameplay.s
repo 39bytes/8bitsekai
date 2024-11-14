@@ -41,6 +41,8 @@ SPAWN_DIFF = (SCREEN_HEIGHT + TILE_WIDTH) / SCROLL_SPEED * BPM * 2
 .segment "CODE"
 
 str_gameplay: .asciiz "Gameplay"
+str_spawn_y: .asciiz "Y: "
+
 chart:
   .byte 5 ; 150 BPM
   .byte $02, $00 ; 2 notes
@@ -69,18 +71,14 @@ gameplay:
   ; Setup scroll Y to bottom of screen initially
   MOVE scroll_y, #239 
   ; Compute map relevant information
-  ; Read BPM and convert it to timing units
-  lda chart
+  lda chart ; Read BPM and convert it to timing units
   clc
   rol
-  sta frame_units
-  ; Read chart length
-  MOVE24 chart_length, {chart+1}
+  sta frame_units 
+  MOVE24 chart_length, {chart+1} ; BPM is followed by the chart length
 
-  ; Initial rendering
-  DRAW_TILE Tile::Note, 8, 0
-  DRAW_TILE Tile::Note, 9, 0
-  
+  DRAW_STRING str_spawn_y, 0, 0
+
 @loop:
   inc frame
   ; Gameplay logic
@@ -90,7 +88,7 @@ gameplay:
 
   jsr scroll_position
   lda t1
-  DEBUG_VAR t1, 2, 2
+  DEBUG_VAR t1, 3, 0
 
   jsr ppu_update
   jmp @loop
@@ -323,11 +321,11 @@ end:
   ; Now we draw all of those tiles
   ldx note_start
   lda #Tile::Note
-@draw_note:
+@draw_tile:
   jsr ppu_update_tile
   inx
   cpx note_end
-  bcc @draw_note
+  bcc @draw_tile
 
   rts
 .endproc
