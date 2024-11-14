@@ -112,14 +112,14 @@ vblankwait1:
 
 clear_memory:
   lda #$00
-  sta $0000, x
-  sta $0100, x
-  sta $0200, x
-  sta $0300, x
-  sta $0400, x
-  sta $0500, x
-  sta $0600, x
-  sta $0700, x
+  sta $0000, X
+  sta $0100, X
+  sta $0200, X
+  sta $0300, X
+  sta $0400, X
+  sta $0500, X
+  sta $0600, X
+  sta $0700, X
   inx
   bne clear_memory
   
@@ -134,6 +134,7 @@ set_sprite:
   inx
   inx
   bne set_sprite
+; load default palette
 
 ; second wait for vblank, PPU is ready after this
 vblankwait2:
@@ -242,11 +243,8 @@ default_palette:
 
 main:
   ldx #0
-  MOVE PPUADDR, #$3F
-  MOVE PPUADDR, #$00
 @load_palettes:   ; Load all 32 bytes of palettes
   MOVE {palette, X}, {default_palette, X}
-  MOVE PPUDATA, {default_palette, X}
   inx
   cpx #32
   bne @load_palettes

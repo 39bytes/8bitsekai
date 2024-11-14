@@ -46,8 +46,8 @@ str_spawn_y: .asciiz "Y: "
 chart:
   .byte 5 ; 150 BPM
   .byte $02, $00 ; 2 notes
-  .byte $03, 240, $00, $00 ; Note after 1 beat, width 1, lanes 0-3
-  .byte $35, 240, $01, $00 ; Note after 1 beat, width 1, lanes 3-5
+  .byte $03, $E0, $01, $00 ; Note after 2 beats, lanes 0-3
+  .byte $35, $C0, $03, $00 ; Note after 4 beats, lanes 3-5
 
 gameplay:
   ; Clear draw buffer
@@ -63,11 +63,14 @@ gameplay:
   SET_SPRITE gameplay_cursor+8, #224, #Sprite::Cursor, #0, #144 ; Right 
   SET_SPRITE gameplay_cursor+12, #224, #Sprite::Cursor, #0, #152 ; Right 2
 
-  ; Reset the timer
+  ; Reset state
   lda #0
   sta timer
   sta timer+1
   sta timer+2
+  sta notes_spawned
+  sta notes_spawned+1
+
   ; Setup scroll Y to bottom of screen initially
   MOVE scroll_y, #239 
   ; Compute map relevant information
@@ -75,20 +78,19 @@ gameplay:
   clc
   rol
   sta frame_units 
-  MOVE24 chart_length, {chart+1} ; BPM is followed by the chart length
+  MOVE16 chart_length, {chart+1} ; BPM is followed by the chart length
+  LOAD16 note_ptr, #<(chart+3), #>(chart+3) ; Set the note pointer
 
   DRAW_STRING str_spawn_y, 0, 0
 
 @loop:
-  inc frame
   ; Gameplay logic
+  jsr load_notes
   jsr tick_timer       
   jsr inc_scroll
   jsr handle_gameplay_input
 
-  jsr scroll_position
-  lda t1
-  DEBUG_VAR t1, 3, 0
+  inc frame
 
   jsr ppu_update
   jmp @loop
@@ -244,13 +246,13 @@ loop:
   ; i.e timing - timer <= SPAWN_DIFF
   MOVE24 p2_24, timer ; compute timing - timer
   jsr sub24
+  ; Notes are in chronological order so if timing - timer > SPAWN_DIFF then
+  ; it's too early for this one so we can just return early
   MOVE24 p1_24, r1_24 ; compare with SPAWN_DIFF
   MOVE p2_24, #<SPAWN_DIFF
   MOVE p2_24+1, #>SPAWN_DIFF
   jsr cmp24
-  ; Notes are in chronological order so if it's too early for this one
-  ; then we can just return early
-  bcc end
+  bcs end
   ; If we get here, then the note should be spawned
   inc notes_spawned
 
@@ -337,6 +339,7 @@ end:
   tile_y = t1
   nt_bit = t2
 
+  MOVE nt_bit, scroll_nt
   lda scroll_y ; Divide by 8 (tile size)
   lsr
   lsr 
@@ -346,7 +349,7 @@ end:
   ; If we're on tile 0 of a nametable, flip the nametable bit, set to 29 (last row of a nametable)
   cmp #0
   bne :+
-    lda scroll_nt
+    lda nt_bit
     eor $02
     sta nt_bit
     MOVE tile_y, #29

@@ -2,4 +2,5 @@
 *.nes
 *.nes*
 *.fdb
+*.nl
 .DS_Store

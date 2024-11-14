@@ -96,6 +96,13 @@
   sta to+2
 .endmacro
 
+.macro LOAD16 to, low_byte, high_byte
+  lda low_byte
+  sta to
+  lda high_byte
+  sta to+1
+.endmacro
+
 .macro LOAD24 to, low_byte, mid_byte, high_byte
   lda low_byte
   sta to

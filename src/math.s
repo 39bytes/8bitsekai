@@ -104,7 +104,7 @@
     rts
 :
   ; Compare low bytes
-  lda p2_16
+  lda p1_16
   cmp p2_16
   rts
 .endproc
