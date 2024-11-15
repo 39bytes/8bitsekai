@@ -32,17 +32,17 @@
 .proc add24
   clc
   ; Add low bytes
-  lda p1_16
-  adc p2_16
-  sta r1_16
+  lda p1_24
+  adc p2_24
+  sta r1_24
   ; Add middle bytes
-  lda p1_16+1
-  adc p2_16+1
-  sta r1_16+1
+  lda p1_24+1
+  adc p2_24+1
+  sta r1_24+1
   ; Add high bytes
-  lda p1_16+2
-  adc p2_16+2
-  sta r1_16+2
+  lda p1_24+2
+  adc p2_24+2
+  sta r1_24+2
 
   rts
 .endproc
@@ -78,17 +78,17 @@
 .proc sub24
   sec
   ; Subtract low bytes
-  lda p1_16
-  sbc p2_16
-  sta r1_16
+  lda p1_24
+  sbc p2_24
+  sta r1_24
   ; Subtract middle bytes
-  lda p1_16+1
-  sbc p2_16+1
-  sta r1_16+1
+  lda p1_24+1
+  sbc p2_24+1
+  sta r1_24+1
   ; Subtract high bytes
-  lda p1_16+2
-  sbc p2_16+2
-  sta r1_16+2
+  lda p1_24+2
+  sbc p2_24+2
+  sta r1_24+2
 
   rts
 .endproc
@@ -124,20 +124,20 @@
 ; Sets C if B >= C
 .proc cmp24
   ; Compare high bytes
-  lda p1_16+2
-  cmp p2_16+2
+  lda p1_24+2
+  cmp p2_24+2
   beq :+
     rts
 :
   ; Compare middle bytes
-  lda p1_16+1
-  cmp p2_16+1
+  lda p1_24+1
+  cmp p2_24+1
   beq :+
     rts
 :
   ; Compare low bytes
-  lda p1_16
-  cmp p2_16
+  lda p1_24
+  cmp p2_24
   rts
 .endproc
 

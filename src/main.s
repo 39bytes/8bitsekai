@@ -230,7 +230,7 @@ irq:
 
 default_palette:
   ; Background Palette
-  .byte $0f, $10, $20, $30
+  .byte $0f, $00, $10, $30
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00

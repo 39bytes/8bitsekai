@@ -9,9 +9,11 @@
   Blank = $00
   LaneDark = $02
   LaneCursor = $03
-  Note = $04
-  PlayfieldBoundaryLeft = $05
-  PlayfieldBoundaryRight = $06
+  NoteLeft = $04
+  NoteMiddle = $05
+  NoteRight = $06
+  PlayfieldBoundaryLeft = $07
+  PlayfieldBoundaryRight = $08
 .endenum
 
 .enum Sprite

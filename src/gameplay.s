@@ -41,13 +41,12 @@ SPAWN_DIFF = (SCREEN_HEIGHT + TILE_WIDTH) / SCROLL_SPEED * BPM * 2
 .segment "CODE"
 
 str_gameplay: .asciiz "Gameplay"
-str_spawn_y: .asciiz "Y: "
 
 chart:
   .byte 5 ; 150 BPM
   .byte $02, $00 ; 2 notes
-  .byte $03, $E0, $01, $00 ; Note after 2 beats, lanes 0-3
-  .byte $35, $C0, $03, $00 ; Note after 4 beats, lanes 3-5
+  .byte $03, $C0, $03, $00 ; Note after 2 beats, lanes 0-3
+  .byte $67, $C0, $03, $00 ; Note after 4 beats, lanes 6-7
 
 gameplay:
   ; Clear draw buffer
@@ -81,8 +80,6 @@ gameplay:
   MOVE16 chart_length, {chart+1} ; BPM is followed by the chart length
   LOAD16 note_ptr, #<(chart+3), #>(chart+3) ; Set the note pointer
 
-  DRAW_STRING str_spawn_y, 0, 0
-
 @loop:
   ; Gameplay logic
   jsr load_notes
@@ -103,30 +100,30 @@ gameplay:
 @draw_left_2000:    ; Draw the left boundary on nametable $2000
   jsr ppu_set_tile
   iny
-  cpy #32
+  cpy #30
   bcc @draw_left_2000
 
   ldy #64
 @draw_left_2800:    ; Draw the left boundary on nametable $2800
   jsr ppu_set_tile
   iny
-  cpy #96
+  cpy #94
   bcc @draw_left_2800
 
   lda #Tile::PlayfieldBoundaryRight
-  ldx #(LANE_X + 18)
+  ldx #(LANE_X + (N_LANES + 1) * 2)
   ldy #0
 @draw_right_2000:    ; Draw the right boundary on nametable $2000
   jsr ppu_set_tile
   iny
-  cpy #32
+  cpy #30
   bcc @draw_right_2000
 
   ldy #64
 @draw_right_2800:    ; Draw the right boundary on nametable $2800
   jsr ppu_set_tile
   iny
-  cpy #96
+  cpy #94
   bcc @draw_right_2800
 
   rts
@@ -238,7 +235,6 @@ loop:
   iny
   MOVE p1_24+2, {(note_ptr), Y} 
   iny
-  sta mem_offset
   ; Save the timing for later
   MOVE24 timing1, p1_24
 
@@ -254,6 +250,8 @@ loop:
   jsr cmp24
   bcs end
   ; If we get here, then the note should be spawned
+  ; so commit the mem_offset change and increment the note counter
+  sty mem_offset
   inc notes_spawned
 
   ; Add this note to the live note queue
@@ -274,17 +272,11 @@ loop:
   jmp loop
 
 end:
-  ; Commit the memory offset, subtracting 4 to compensate for overadding
-  lda mem_offset
-  sec
-  sbc #4
-  sta p2_16
-  lda #0
-  sta p2_16+1
-
-  MOVE p1_16, note_ptr
+  ; Add the accumulated memory offset to the note pointer
+  MOVE16 p1_16, note_ptr
+  LOAD16 p2_16, mem_offset, #$00
   jsr add16
-  MOVE note_ptr, r1_16
+  MOVE16 note_ptr, r1_16
   
   POP s5
   POP s4
@@ -300,35 +292,57 @@ end:
 ; Y - The Y coordinate to draw it at
 .proc draw_note
   lanes = t1
-  note_start = t2
-  note_end = t3
-
+  note_start = s1
+  note_end = s2
+  ; Save this argument first
   sta lanes
 
+  ; Save registers
+  PUSH s1
+  PUSH s2
+
   ; The left most end point is the top 4 bits (lanes >> 4)
-  lsr
-  lsr
-  lsr
-  lsr
-  ; Multiplied by 2
-  asl
-  sta note_start
-  ; The right end point is the bottom 4 bits so mask them off
   lda lanes
-  and #$0F
+  lsr
+  lsr
+  lsr
+  lsr
   ; Multiplied by 2
   asl
-  sta note_end
+  adc #LANE_X ; Then add the X offset of the playfield
+  sta note_start
+  ; The right end point is the bottom 4 bits 
+  inc lanes ; First add 1 to make it inclusive
+  lda lanes ; Then mask off the bottom 4 bits
+  and #$0F 
+  asl       ; Multiplied by 2
+  adc #LANE_X ; Then also add the X offset of the playfield
+  sta note_end 
 
   ; Now we draw all of those tiles
   ldx note_start
-  lda #Tile::Note
-@draw_tile:
+  ; First start with the left edge
+  lda #Tile::NoteLeft
   jsr ppu_update_tile
   inx
+  ; Then draw the middle, that is until `note_end - 1`
+  dec note_end
+@draw_middle:  
   cpx note_end
-  bcc @draw_tile
+  bcs @draw_right
 
+  lda #Tile::NoteMiddle
+  jsr ppu_update_tile
+  inx
+  jmp @draw_middle
+
+@draw_right:
+  ; Finish by drawing the right edge
+  lda #Tile::NoteRight
+  jsr ppu_update_tile
+
+  POP s2
+  POP s1
   rts
 .endproc
 
