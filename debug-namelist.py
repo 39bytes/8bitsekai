@@ -38,11 +38,23 @@ def main():
     with open(f"{rom_name}.0.nl", "w+") as f:
         f.writelines(rom_labels)
 
-    with open(f"{rom_name[:-4]}.fdb", "w+") as f:
+    fdb_file = f"{rom_name[:-4]}.fdb"
+
+    try:
+        with open(fdb_file, "r") as f:
+            breakpoints = [
+                line for line in f.readlines() if line.startswith("BreakPoint")
+            ]
+    except FileNotFoundError:
+        breakpoints = []
+
+    with open(fdb_file, "w+") as f:
         for sym in symbols:
             if sym.label.startswith("@"):
                 continue
             f.write(f'Bookmark: addr={sym.addr:04X}  desc="{sym.label}"\n')
+        for bp in breakpoints:
+            f.write(bp)
 
 
 if __name__ == "__main__":
