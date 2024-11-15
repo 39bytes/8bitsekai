@@ -2,6 +2,7 @@
 ; do not have to preserve the registers before calling them.
 
 ; 16 bit addition: B + C
+; Preserves: X, Y
 ; ---Parameters---
 ; p1_16 - B
 ; p2_16 - C
@@ -22,6 +23,7 @@
 .endproc
 
 ; 24 bit addition: B + C
+; Preserves: X, Y
 ; ---Parameters---
 ; p1_24 - B
 ; p2_24 - C
@@ -46,6 +48,7 @@
 .endproc
 
 ; 16 bit subtraction: B - C
+; Preserves: X, Y
 ; ---Parameters---
 ; p1_16 - B
 ; p2_16 - C
@@ -66,6 +69,7 @@
 .endproc
 
 ; 24 bit subtraction: B - C
+; Preserves: X, Y
 ; ---Parameters---
 ; p1_24 - B
 ; p2_24 - C
@@ -90,6 +94,7 @@
 .endproc
 
 ; 16 bit comparison between two numbers B and C
+; Preserves: X, Y
 ; ---Parameters----
 ; p1_24 - B
 ; p2_24 - C
@@ -110,6 +115,7 @@
 .endproc
 
 ; 16 bit comparison between two numbers B and C
+; Preserves: X, Y
 ; ---Parameters----
 ; p1_24 - B
 ; p2_24 - C
@@ -124,17 +130,22 @@
     rts
 :
   ; Compare middle bytes
-  lda p2_16+1
+  lda p1_16+1
   cmp p2_16+1
   beq :+
     rts
 :
   ; Compare low bytes
-  lda p2_16
-  cmp p2_16+1
+  lda p1_16
+  cmp p2_16
   rts
 .endproc
 
+; Convert a byte to an unpacked binary coded decimal representation
+; ---Parameters---
+; A - Byte to convert
+; ---Returns---
+; r1_24 - Binary coded decimal
 .proc hex8_to_decimal
   ldy #'0'
 
