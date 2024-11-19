@@ -20,7 +20,6 @@
   live_notes_timing1: .res 16
   live_notes_timing2: .res 16
   live_notes_timing3: .res 16
-  live_notes_nt_x: .res 16
   live_notes_nt_y: .res 16
 
 
@@ -37,6 +36,8 @@ SCROLL_SPEED = 4 ; Vertical scroll speed
 BPM = 5
 ; How many timing units ahead we should spawn the note?
 SPAWN_DIFF = (SCREEN_HEIGHT + TILE_WIDTH) / SCROLL_SPEED * BPM * 2 
+; How many timing units should have passed before force missing a live note?
+MISS_DIFF = (BPM * 2) * 20
   
 .segment "CODE"
 
@@ -44,9 +45,11 @@ str_gameplay: .asciiz "Gameplay"
 
 chart:
   .byte 5 ; 150 BPM
-  .byte $02, $00 ; 2 notes
-  .byte $03, $C0, $03, $00 ; Note after 2 beats, lanes 0-3
-  .byte $67, $C0, $03, $00 ; Note after 4 beats, lanes 6-7
+  .byte $04, $00 ; 4 notes
+  .byte $04, $C0, $03, $00 ; Note after 4 beats, lanes 0-4
+  .byte $03, $B0, $04, $00 ; Note after 6 beats, lanes 0-3
+  .byte $02, $A0, $05, $00 ; Note after 7 beats, lanes 0-2
+  .byte $01, $90, $06, $00 ; Note after 8 beats, lanes 0-1
 
 gameplay:
   ; Clear draw buffer
@@ -69,6 +72,8 @@ gameplay:
   sta timer+2
   sta notes_spawned
   sta notes_spawned+1
+  sta live_notes_head_index
+  sta live_notes_tail_index
 
   ; Setup scroll Y to bottom of screen initially
   MOVE scroll_y, #239 
@@ -83,6 +88,7 @@ gameplay:
 @loop:
   ; Gameplay logic
   jsr load_notes
+  jsr check_delete_note
   jsr tick_timer       
   jsr inc_scroll
   jsr handle_gameplay_input
@@ -256,10 +262,11 @@ loop:
 
   ; Add this note to the live note queue
   ldx live_notes_tail_index
+  MOVE {live_notes_lanes, X}, lanes
   MOVE {live_notes_timing1, X}, timing1
   MOVE {live_notes_timing2, X}, timing2
   MOVE {live_notes_timing3, X}, timing3
-  MOVE {live_notes_nt_x, X}, lanes
+  
   ; Compute the scroll tile Y
   jsr scroll_position
   sta live_notes_nt_y, X
@@ -286,11 +293,12 @@ end:
   rts
 .endproc
 
+.macro DRAW_NOTE_IMPL name, left_tile, middle_tile, right_tile
 ; Draws a single note. 
 ; ---Parameters---
 ; A - The lane byte of the note.
 ; Y - The Y coordinate to draw it at
-.proc draw_note
+.proc name
   lanes = t1
   note_start = s1
   note_end = s2
@@ -322,7 +330,7 @@ end:
   ; Now we draw all of those tiles
   ldx note_start
   ; First start with the left edge
-  lda #Tile::NoteLeft
+  lda #left_tile
   jsr ppu_update_tile
   inx
   ; Then draw the middle, that is until `note_end - 1`
@@ -331,20 +339,24 @@ end:
   cpx note_end
   bcs @draw_right
 
-  lda #Tile::NoteMiddle
+  lda #middle_tile
   jsr ppu_update_tile
   inx
   jmp @draw_middle
 
 @draw_right:
   ; Finish by drawing the right edge
-  lda #Tile::NoteRight
+  lda #right_tile
   jsr ppu_update_tile
 
   POP s2
   POP s1
   rts
 .endproc
+.endmacro
+
+DRAW_NOTE_IMPL draw_note, Tile::NoteLeft, Tile::NoteMiddle, Tile::NoteRight
+DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
 
 ; Converts the current scroll position to a nametable tile position.
 ; ---Returns---
@@ -378,5 +390,39 @@ end:
 :
 
   lda tile_y
+  rts
+.endproc
+
+; Processes force misses.
+.proc check_delete_note
+@loop:
+  ; If the queue is empty (head == tail), then break
+  lda live_notes_head_index
+  cmp live_notes_tail_index
+  beq @end
+  ; Compute timer - timing to see if we should remove the note from the queue
+  MOVE24 p1_24, timer
+  ldx live_notes_head_index
+  MOVE {p2_24}, {live_notes_timing1, X}
+  MOVE {p2_24+1}, {live_notes_timing2, X}
+  MOVE {p2_24+2}, {live_notes_timing3, X}
+  jsr sub24
+  ; Notes in the live queue are stored in increasing time, so
+  ; if the timing point hasn't passed yet, then we don't have to check any more notes
+  bmi @end
+  ; Here, the note has passed the timing point, so check if 
+  ; difference >= MISS_DIFF
+  MOVE24 p1_24, r1_24
+  LOAD24 p2_24, #MISS_DIFF, #0, #0
+  jsr cmp24
+  bcc @end
+  ; Delete the note and remove from the queue.
+  lda live_notes_lanes, X
+  ldy live_notes_nt_y, X
+  jsr clear_note
+  INC_WRAP live_notes_head_index, 16
+  bne @loop
+@end:
+
   rts
 .endproc
