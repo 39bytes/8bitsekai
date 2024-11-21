@@ -2,25 +2,30 @@
 ; | Gameplay |
 ; ============
 
+QUEUE_LEN = 16
+
 .segment "ZEROPAGE"
   frame: .res 1 ; The current frame count
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
   ; --- Chart Relevant Data ---
   ; I'm defining a 'timing unit' to be 1/240 of a beat.
-  timer: .res 3         ; For note timing, measured in timing units
-  frame_units: .res 1   ; How many timing units occur in 1 frame
-  chart_length: .res 2  ; The number of notes in the chart
+  timer:         .res 3 ; For note timing, measured in timing units
+  frame_units:   .res 1 ; How many timing units occur in 1 frame
+  chart_length:  .res 2 ; The number of notes in the chart
   notes_spawned: .res 2 ; The number of notes we've already spawned
-  note_ptr: .res 2      ; Pointer to the most recently non-spawned note
+  notes_hit:     .res 2 ; The number of notes that have been hit successfully
+  note_ptr:      .res 2 ; Pointer to the most recently non-spawned note
   
-  ; Need some kind of note queue for hits...
+  ; The queue of notes currently present on the playfield
   live_notes_head_index: .res 1
   live_notes_tail_index: .res 1
-  live_notes_lanes: .res 16
-  live_notes_timing1: .res 16
-  live_notes_timing2: .res 16
-  live_notes_timing3: .res 16
-  live_notes_nt_y: .res 16
+  live_notes_lanes:      .res QUEUE_LEN
+  live_notes_timing1:    .res QUEUE_LEN
+  live_notes_timing2:    .res QUEUE_LEN
+  live_notes_timing3:    .res QUEUE_LEN
+  live_notes_nt_y:       .res QUEUE_LEN
+  ; TODO: Waste less space with this
+  live_notes_hit:        .res QUEUE_LEN
 
 
 SCREEN_HEIGHT = 240
@@ -37,8 +42,13 @@ BPM = 5
 ; How many timing units ahead we should spawn the note?
 SPAWN_DIFF = (SCREEN_HEIGHT + TILE_WIDTH) / SCROLL_SPEED * BPM * 2 
 ; How many timing units should have passed before force missing a live note?
+PERFECT_DIFF = (BPM * 2) * 2
+GREAT_DIFF = (BPM * 2) * 4
+GOOD_DIFF = (BPM * 2) * 8
+BAD_DIFF = (BPM * 2) * 12
 MISS_DIFF = (BPM * 2) * 20
-  
+IGNORE_DIFF = (BPM * 2) * 30
+
 .segment "CODE"
 
 str_gameplay: .asciiz "Gameplay"
@@ -46,10 +56,10 @@ str_gameplay: .asciiz "Gameplay"
 chart:
   .byte 5 ; 150 BPM
   .byte $04, $00 ; 4 notes
-  .byte $04, $C0, $03, $00 ; Note after 4 beats, lanes 0-4
-  .byte $03, $B0, $04, $00 ; Note after 6 beats, lanes 0-3
-  .byte $02, $A0, $05, $00 ; Note after 7 beats, lanes 0-2
-  .byte $01, $90, $06, $00 ; Note after 8 beats, lanes 0-1
+  .byte $02, $C0, $03, $00 ; Note after 4 beats, lanes 0-4
+  .byte $58, $B0, $04, $00 ; Note after 6 beats, lanes 0-3
+  .byte $34, $A0, $05, $00 ; Note after 7 beats, lanes 0-2
+  .byte $12, $90, $06, $00 ; Note after 8 beats, lanes 0-1
 
 gameplay:
   ; Clear draw buffer
@@ -60,10 +70,10 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #224, #Sprite::Cursor, #0, #128   ; Left
-  SET_SPRITE gameplay_cursor+4, #224, #Sprite::Cursor, #0, #136 ; Left 2
-  SET_SPRITE gameplay_cursor+8, #224, #Sprite::Cursor, #0, #144 ; Right 
-  SET_SPRITE gameplay_cursor+12, #224, #Sprite::Cursor, #0, #152 ; Right 2
+  SET_SPRITE gameplay_cursor, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128   ; Left
+  SET_SPRITE gameplay_cursor+4, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136 ; Left 2
+  SET_SPRITE gameplay_cursor+8, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #144 ; Right 
+  SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #152 ; Right 2
 
   ; Reset state
   lda #0
@@ -148,6 +158,18 @@ gameplay:
   beq @skip_right
     INC_WRAP gameplay_cursor_position, #N_LANES     ; Move the cursor right
 @skip_right:
+
+  IS_JUST_PRESSED BUTTON_A
+  beq @skip_a
+    lda #1 ; right
+    jsr cursor_hit
+@skip_a:
+
+  IS_JUST_PRESSED BUTTON_B
+  beq @skip_b
+    lda #0 ; left
+    jsr cursor_hit
+@skip_b:
 
   jsr update_cursor_position
   MOVE last_frame_buttons, buttons
@@ -400,12 +422,13 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   lda live_notes_head_index
   cmp live_notes_tail_index
   beq @end
-  ; Compute timer - timing to see if we should remove the note from the queue
-  MOVE24 p1_24, timer
+  ; First check if the note is already marked for deletion by a hit input
   ldx live_notes_head_index
-  MOVE {p2_24}, {live_notes_timing1, X}
-  MOVE {p2_24+1}, {live_notes_timing2, X}
-  MOVE {p2_24+2}, {live_notes_timing3, X}
+  lda live_notes_hit, X
+  bne @increment
+  ; Otherwise, compute timer - timing to see if we should remove the note from the queue
+  MOVE24 p1_24, timer
+  LOAD24 p2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
   jsr sub24
   ; Notes in the live queue are stored in increasing time, so
   ; if the timing point hasn't passed yet, then we don't have to check any more notes
@@ -420,9 +443,82 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   lda live_notes_lanes, X
   ldy live_notes_nt_y, X
   jsr clear_note
-  INC_WRAP live_notes_head_index, 16
+@increment:
+  INC_WRAP live_notes_head_index, QUEUE_LEN
   bne @loop
 @end:
 
+  rts
+.endproc
+
+; Process a hit input on a lane
+; This just marks the note as hit and clears from the nametable
+; ---Parameters---
+; A - Left or right (0 for left, 1 for right)
+; TODO: broken
+.proc cursor_hit
+  hit_lane = t1
+  index = t2
+  temp = t3
+
+  clc
+  adc gameplay_cursor_position
+  sta hit_lane
+
+  ; Check the live note queue for notes
+  ; NOTE: Can be optimized, don't need to preserve the X register
+  ; since when it would be clobbered (jsr clear_note) we break from the loop anyway
+  MOVE index, live_notes_head_index ; Stores the index
+@loop:
+  ; while (head_index < tail_index)
+  ldx index
+  cpx live_notes_tail_index
+  bcs @end
+  
+  ; Check note timing difference
+  LOAD24 p1_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
+  MOVE24 p2_24, timer
+  jsr sub24
+  ; If the note we're looking at is too early, then the rest must be later so just break
+  MOVE24 p1_24, r1_24
+  ; TODO: Handle early hit better 
+  LOAD24 p2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
+  jsr cmp24
+  bcs @end
+
+  ; Check if the hit falls within the note
+  ; First check that hit_lane < end
+  lda live_notes_lanes, X
+  and #$0F
+  cmp hit_lane
+  bcc @next
+  ; Then check that hit_lane >= start
+  lda live_notes_lanes, X
+  lsr
+  lsr
+  lsr
+  lsr
+  sta temp
+  lda hit_lane
+  cmp temp
+  bcc @next
+  
+  ; If we get here, then the note should be hit
+  ; TODO: Judgement logic
+
+  ; Set hit to true
+  MOVE {live_notes_hit, X}, #1
+  ; Clear the note
+  lda live_notes_lanes, X
+  ldy live_notes_nt_y, X
+  jsr clear_note
+  ; Break from the loop
+  jmp @end
+
+@next:
+  INC_WRAP index, QUEUE_LEN
+  jmp @loop
+  
+@end:
   rts
 .endproc

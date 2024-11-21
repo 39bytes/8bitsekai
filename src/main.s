@@ -237,7 +237,7 @@ default_palette:
 
   ; Sprite Palette
   .byte $0f, $10, $20, $30
-  .byte $0f, $00, $00, $00
+  .byte $0f, $32, $22, $00
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
 

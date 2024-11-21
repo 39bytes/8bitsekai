@@ -21,4 +21,14 @@ PPUADDR = $2006
 PPUDATA = $2007
 OAMDMA = $4014
 
+; Sprite attribute bit flags
+PAL0 = 0
+PAL1 = 1
+PAL2 = 2
+PAL3 = 3
+BEHIND_BACKGROUND = 1 << 5
+FLIP_HORIZONTAL   = 1 << 6
+FLIP_VERTICAL     = 1 << 7
+
+
 CONTROLLER1 = $4016
