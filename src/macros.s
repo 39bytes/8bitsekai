@@ -70,10 +70,32 @@
 :
 .endmacro
 
+.macro SUB_WRAP var, amt, wrap_to
+  sec
+  lda var
+  sbc amt
+  sta var
+  bpl :+
+    MOVE var, wrap_to
+:
+.endmacro
+
 ; Increment `var`, wrapping to 0 if `var >= max` after incrementing.
 .macro INC_WRAP var, max
+  clc
   inc var
   lda var
+  cmp max
+  bcc :+
+    MOVE var, #0
+:
+.endmacro
+
+.macro ADD_WRAP var, amt, max
+  clc
+  lda var
+  adc amt
+  sta var
   cmp max
   bcc :+
     MOVE var, #0

@@ -19,7 +19,8 @@
 .enum Sprite
   Blank = $00
   CursorLeft = $02
-  CursorRight = $03
+  CursorMiddle = $03
+  CursorRight = $04
 .endenum
 
 ; Turn off the PPU rendering for manual nametable updates

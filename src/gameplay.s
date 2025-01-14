@@ -30,7 +30,7 @@ QUEUE_LEN = 16
 
 SCREEN_HEIGHT = 240
 TILE_WIDTH = 8
-CURSOR_WIDTH = 2 ; Lane width of the cursor
+CURSOR_WIDTH = 3 ; Lane width of the cursor
 N_LANES = 8      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
@@ -70,10 +70,12 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128   ; Left
-  SET_SPRITE gameplay_cursor+4, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136 ; Left 2
-  SET_SPRITE gameplay_cursor+8, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144 ; Right 
-  SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152 ; Right 2
+  SET_SPRITE gameplay_cursor, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
+  SET_SPRITE gameplay_cursor+4, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
+  SET_SPRITE gameplay_cursor+8, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
+  SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
+  SET_SPRITE gameplay_cursor+16, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
+  SET_SPRITE gameplay_cursor+20, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Reset state
   lda #0
@@ -160,12 +162,12 @@ gameplay:
 @check_left:
   IS_JUST_PRESSED BUTTON_LEFT
   beq @check_right
-    DEC_WRAP gameplay_cursor_position, #(N_LANES-1) ; Move the cursor left
+    SUB_WRAP gameplay_cursor_position, #3, #(N_LANES-2) ; Move the cursor left
 
 @check_right:
   IS_JUST_PRESSED BUTTON_RIGHT
   beq @check_a
-    INC_WRAP gameplay_cursor_position, #N_LANES     ; Move the cursor right
+    ADD_WRAP gameplay_cursor_position, #3, #(N_LANES) ; Move the cursor right 
 
 @check_a:
   IS_JUST_PRESSED BUTTON_A
@@ -202,6 +204,10 @@ gameplay:
   sta gameplay_cursor+11
   adc #8
   sta gameplay_cursor+15
+  adc #8
+  sta gameplay_cursor+19
+  adc #8
+  sta gameplay_cursor+23
 
   rts
 .endproc
