@@ -36,7 +36,7 @@ N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
 LANE_Y = 28      ; Y position of the lanes
-SCROLL_SPEED = 4 ; Vertical scroll speed
+SCROLL_SPEED = 3 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
 BPM = 4
@@ -426,7 +426,7 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   cmp #0
   bne :+
     lda nt_bit
-    eor $02
+    eor #$02
     sta nt_bit
     MOVE tile_y, #29
 :
@@ -451,9 +451,9 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   cmp live_notes_tail_index
   beq @end
   ; First check if the note is already marked for deletion by a hit input
-  ldx live_notes_head_index
-  lda live_notes_hit, X
-  bne @increment
+  ; ldx live_notes_head_index
+  ; lda live_notes_hit, X
+  ; bne @increment
   ; Otherwise, compute timer - timing to see if we should remove the note from the queue
   MOVE24 p1_24, timer
   LOAD24 p2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
