@@ -31,11 +31,11 @@ QUEUE_LEN = 16
 SCREEN_HEIGHT = 240
 TILE_WIDTH = 8
 CURSOR_WIDTH = 3 ; Lane width of the cursor
-N_LANES = 8      ; Total number of lanes
+N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
 LANE_Y = 28      ; Y position of the lanes
-SCROLL_SPEED = 4 ; Vertical scroll speed
+SCROLL_SPEED = 2 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
 BPM = 5
@@ -54,12 +54,7 @@ IGNORE_DIFF = (BPM * 2) * 30
 str_gameplay: .asciiz "Gameplay"
 
 chart:
-  .byte 5 ; 150 BPM
-  .byte $04, $00 ; 4 notes
-  .byte $02, $C0, $03, $00 ; Note after 4 beats, lanes 0-4
-  .byte $58, $B0, $04, $00 ; Note after 6 beats, lanes 0-3
-  .byte $34, $A0, $05, $00 ; Note after 7 beats, lanes 0-2
-  .byte $12, $90, $06, $00 ; Note after 8 beats, lanes 0-1
+  .incbin "../assets/chart.bin"
 
 gameplay:
   ; Clear draw buffer
@@ -137,7 +132,7 @@ gameplay:
   bcc @draw_left_2800
 
   lda #Tile::PlayfieldBoundaryRight
-  ldx #(LANE_X + (N_LANES + 1) * 2)
+  ldx #(LANE_X + N_LANES * 2)
   ldy #0
 @draw_right_2000:    ; Draw the right boundary on nametable $2000
   jsr ppu_set_tile
@@ -161,25 +156,36 @@ gameplay:
 
 @check_left:
   IS_JUST_PRESSED BUTTON_LEFT
-  beq @check_right
-    SUB_WRAP gameplay_cursor_position, #3, #(N_LANES-2) ; Move the cursor left
+  beq :+
+    SUB_WRAP gameplay_cursor_position, #3, #(N_LANES-3) ; Move the cursor left
+  :
 
 @check_right:
   IS_JUST_PRESSED BUTTON_RIGHT
-  beq @check_a
+  beq :+
     ADD_WRAP gameplay_cursor_position, #3, #(N_LANES) ; Move the cursor right 
+  :
 
 @check_a:
   IS_JUST_PRESSED BUTTON_A
-  beq @check_b
-    lda #1 ; right
+  beq :+
+    lda #2 ; right
     jsr cursor_hit
+  :
+
+@check_up:
+  IS_JUST_PRESSED BUTTON_UP
+  beq :+
+    lda #1 ; middle
+    jsr cursor_hit
+  :
 
 @check_b:
   IS_JUST_PRESSED BUTTON_B
-  beq @update
+  beq :+
     lda #0 ; left
     jsr cursor_hit
+  :
 
 @update:
   jsr update_cursor_position
@@ -470,7 +476,6 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
 ; This just marks the note as hit and clears from the nametable
 ; ---Parameters---
 ; A - Left or right (0 for left, 1 for right)
-; TODO: broken
 .proc cursor_hit
   hit_lane = t1
   index = t2
