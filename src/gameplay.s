@@ -470,6 +470,9 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   lda live_notes_lanes, X
   ldy live_notes_nt_y, X
   jsr clear_note
+  ; Missed, so break combo
+  MOVE combo, #0
+  jsr draw_combo
 @increment:
   INC_WRAP live_notes_head_index, QUEUE_LEN
   bne @loop
