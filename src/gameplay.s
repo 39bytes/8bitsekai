@@ -2,7 +2,7 @@
 ; | Gameplay |
 ; ============
 
-QUEUE_LEN = 16
+QUEUE_LEN = 32
 
 .segment "ZEROPAGE"
   frame: .res 1 ; The current frame count
@@ -36,10 +36,10 @@ N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
 LANE_Y = 28      ; Y position of the lanes
-SCROLL_SPEED = 2 ; Vertical scroll speed
+SCROLL_SPEED = 4 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
-BPM = 5
+BPM = 4
 ; How many timing units ahead we should spawn the note?
 SPAWN_DIFF = (SCREEN_HEIGHT + TILE_WIDTH) / SCROLL_SPEED * BPM * 2 
 ; How many timing units should have passed before force missing a live note?
@@ -100,8 +100,8 @@ gameplay:
 
   ; Play music
   lda #1
-  ldx #<music_data_journey_to_silius
-  ldy #>music_data_journey_to_silius
+  ldx #<music_data_lower
+  ldy #>music_data_lower
   jsr famistudio_init
   lda #0
   jsr famistudio_music_play
@@ -319,8 +319,9 @@ loop:
   ; Compute the scroll tile Y
   jsr scroll_position
   sta live_notes_nt_y, X
-  inc live_notes_tail_index
   tay ; Also move this into the Y register for drawing tiles
+
+  INC_WRAP live_notes_tail_index, #QUEUE_LEN
 
   lda lanes
   jsr draw_note
@@ -474,7 +475,7 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   MOVE combo, #0
   jsr draw_combo
 @increment:
-  INC_WRAP live_notes_head_index, QUEUE_LEN
+  INC_WRAP live_notes_head_index, #QUEUE_LEN
   bne @loop
 @end:
 
@@ -548,7 +549,7 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jmp @end
 
 @next:
-  INC_WRAP index, QUEUE_LEN
+  INC_WRAP index, #QUEUE_LEN
   jmp @loop
   
 @end:

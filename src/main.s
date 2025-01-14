@@ -261,5 +261,5 @@ main:
 .include "gameplay.s"
 
 song_journey:
-  .include "../assets/song_journey_to_silius_ca65.s"
+  .include "../assets/8bit_lower.s"
 

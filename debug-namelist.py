@@ -27,6 +27,9 @@ def main():
     rom_labels = []
 
     for sym in sorted(symbols, key=lambda s: s.addr):
+        print(sym.label)
+        if sym.label.lower().startswith("famistudio"):
+            continue
         if 0x0000 <= sym.addr < 0x8000:
             ram_labels.append(str(sym))
         else:
