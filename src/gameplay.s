@@ -15,6 +15,7 @@ QUEUE_LEN = 16
   notes_spawned: .res 2 ; The number of notes we've already spawned
   notes_hit:     .res 2 ; The number of notes that have been hit successfully
   note_ptr:      .res 2 ; Pointer to the most recently non-spawned note
+  combo:         .res 1 ; Current combo
   
   ; The queue of notes currently present on the playfield
   live_notes_head_index: .res 1
@@ -71,6 +72,11 @@ gameplay:
   SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
   SET_SPRITE gameplay_cursor+16, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
   SET_SPRITE gameplay_cursor+20, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
+
+  ; Setup combo sprites
+  SET_SPRITE combo_text, #16, #'0', #PAL0, #16
+  SET_SPRITE combo_text+4, #16, #'0', #PAL0, #24
+  SET_SPRITE combo_text+8, #16, #'0', #PAL0, #32
 
   ; Reset state
   lda #0
@@ -532,6 +538,9 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   lda live_notes_lanes, X
   ldy live_notes_nt_y, X
   jsr clear_note
+  ; Increment combo
+  inc combo
+  jsr draw_combo
   ; Break from the loop
   jmp @end
 
@@ -540,5 +549,16 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jmp @loop
   
 @end:
+  rts
+.endproc
+
+.proc draw_combo
+  lda combo
+  jsr hex8_to_decimal
+  
+  MOVE combo_text+1, r1_24
+  MOVE combo_text+5, r1_24+1
+  MOVE combo_text+9, r1_24+2
+
   rts
 .endproc

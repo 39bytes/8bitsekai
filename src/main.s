@@ -85,7 +85,8 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
 .segment "OAM"
   oam:
     sprite0: .res 4
-    gameplay_cursor: .res 16
+    gameplay_cursor: .res 24
+    combo_text: .res 12
 
 .include "ppu.s"
 .include "input.s"
@@ -238,7 +239,7 @@ default_palette:
   .byte $0f, $00, $00, $00
 
   ; Sprite Palette
-  .byte $0f, $10, $20, $30
+  .byte $0f, $00, $10, $30
   .byte $0f, $32, $22, $33
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
