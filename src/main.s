@@ -85,11 +85,12 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
 .segment "OAM"
   oam:
     sprite0: .res 4
-    gameplay_cursor: .res 16
+    gameplay_cursor: .res 24
 
 .include "ppu.s"
 .include "input.s"
 .include "math.s"
+.include "../vendor/famistudio_ca65.s"
 
 .segment "CODE"
 
@@ -220,6 +221,7 @@ nmi:
   lda #0
   sta nmi_lock
   sta nmi_signal
+  jsr famistudio_update
 
 @nmi_end:
   POP_YXA
@@ -256,4 +258,7 @@ main:
 .include "title_screen.s"
 .include "song_select.s"
 .include "gameplay.s"
+
+song_journey:
+  .include "../assets/song_journey_to_silius_ca65.s"
 

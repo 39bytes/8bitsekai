@@ -114,7 +114,7 @@
   rts
 .endproc
 
-; 16 bit comparison between two numbers B and C
+; 24 bit comparison between two numbers B and C
 ; Preserves: X, Y
 ; ---Parameters----
 ; p1_24 - B

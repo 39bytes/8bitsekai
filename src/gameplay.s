@@ -8,7 +8,7 @@ QUEUE_LEN = 16
   frame: .res 1 ; The current frame count
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
   ; --- Chart Relevant Data ---
-  ; I'm defining a 'timing unit' to be 1/240 of a beat.
+  ; I'm defining a 'timing unit' to be 1/240 of a beat. 
   timer:         .res 3 ; For note timing, measured in timing units
   frame_units:   .res 1 ; How many timing units occur in 1 frame
   chart_length:  .res 2 ; The number of notes in the chart
@@ -72,8 +72,8 @@ gameplay:
   ; Setup cursor sprite
   SET_SPRITE gameplay_cursor, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128   ; Left
   SET_SPRITE gameplay_cursor+4, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136 ; Left 2
-  SET_SPRITE gameplay_cursor+8, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #144 ; Right 
-  SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #152 ; Right 2
+  SET_SPRITE gameplay_cursor+8, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144 ; Right 
+  SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152 ; Right 2
 
   ; Reset state
   lda #0
@@ -94,6 +94,14 @@ gameplay:
   sta frame_units 
   MOVE16 chart_length, {chart+1} ; BPM is followed by the chart length
   LOAD16 note_ptr, #<(chart+3), #>(chart+3) ; Set the note pointer
+
+  ; Play music
+  lda #1
+  ldx #<music_data_journey_to_silius
+  ldy #>music_data_journey_to_silius
+  jsr famistudio_init
+  lda #0
+  jsr famistudio_music_play
 
 @loop:
   ; Gameplay logic
@@ -149,28 +157,29 @@ gameplay:
 .proc handle_gameplay_input
   jsr poll_input
 
+@check_left:
   IS_JUST_PRESSED BUTTON_LEFT
-  beq @skip_left
+  beq @check_right
     DEC_WRAP gameplay_cursor_position, #(N_LANES-1) ; Move the cursor left
-@skip_left:
 
+@check_right:
   IS_JUST_PRESSED BUTTON_RIGHT
-  beq @skip_right
+  beq @check_a
     INC_WRAP gameplay_cursor_position, #N_LANES     ; Move the cursor right
-@skip_right:
 
+@check_a:
   IS_JUST_PRESSED BUTTON_A
-  beq @skip_a
+  beq @check_b
     lda #1 ; right
     jsr cursor_hit
-@skip_a:
 
+@check_b:
   IS_JUST_PRESSED BUTTON_B
-  beq @skip_b
+  beq @update
     lda #0 ; left
     jsr cursor_hit
-@skip_b:
 
+@update:
   jsr update_cursor_position
   MOVE last_frame_buttons, buttons
   rts
