@@ -6,6 +6,7 @@ QUEUE_LEN = 32
 
 .segment "ZEROPAGE"
   frame: .res 1 ; The current frame count
+  ten_frames: .res 1
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
   ; --- Chart Relevant Data ---
   ; I'm defining a 'timing unit' to be 1/240 of a beat. 
@@ -36,7 +37,7 @@ N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
 LANE_Y = 28      ; Y position of the lanes
-SCROLL_SPEED = 3 ; Vertical scroll speed
+SCROLL_SPEED = 4 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
 BPM = 4
@@ -66,12 +67,12 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
-  SET_SPRITE gameplay_cursor+4, #224, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
-  SET_SPRITE gameplay_cursor+8, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
-  SET_SPRITE gameplay_cursor+12, #224, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
-  SET_SPRITE gameplay_cursor+16, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
-  SET_SPRITE gameplay_cursor+20, #224, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
+  SET_SPRITE gameplay_cursor, #228, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
+  SET_SPRITE gameplay_cursor+4, #228, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
+  SET_SPRITE gameplay_cursor+8, #228, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
+  SET_SPRITE gameplay_cursor+12, #228, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
+  SET_SPRITE gameplay_cursor+16, #228, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
+  SET_SPRITE gameplay_cursor+20, #228, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Setup combo sprites
   SET_SPRITE combo_text, #16, #'0', #PAL0, #16
@@ -115,6 +116,13 @@ gameplay:
   jsr handle_gameplay_input
 
   inc frame
+  ; Tick the timer again once every 10 frames to account for drift
+  ;
+;   INC_WRAP frame, 10
+;   bne :+
+;     jsr tick_ticker
+; :
+  
 
   jsr ppu_update
   jmp @loop
@@ -451,9 +459,9 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   cmp live_notes_tail_index
   beq @end
   ; First check if the note is already marked for deletion by a hit input
-  ; ldx live_notes_head_index
-  ; lda live_notes_hit, X
-  ; bne @increment
+  ldx live_notes_head_index
+  lda live_notes_hit, X
+  bne @increment
   ; Otherwise, compute timer - timing to see if we should remove the note from the queue
   MOVE24 p1_24, timer
   LOAD24 p2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
@@ -485,7 +493,7 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
 ; Process a hit input on a lane
 ; This just marks the note as hit and clears from the nametable
 ; ---Parameters---
-; A - Left or right (0 for left, 1 for right)
+; A - Left, middle, or right (0 for left, 1 for middle, 2 for right)
 .proc cursor_hit
   hit_lane = t1
   index = t2
@@ -516,10 +524,13 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jsr cmp24
   bcs @end
 
+  ; end >= hit_lane
+
   ; Check if the hit falls within the note
-  ; First check that hit_lane < end
+  ; First check that hit_lane <= end
   lda live_notes_lanes, X
   and #$0F
+  sta temp
   cmp hit_lane
   bcc @next
   ; Then check that hit_lane >= start

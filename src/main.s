@@ -75,7 +75,6 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
       r2: .res 1
       r3: .res 1
 
-
 .segment "BSS"
   ; Nametable buffers/palette  for PPU update
   nt_update:     .res 256 
