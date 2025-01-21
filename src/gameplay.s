@@ -170,36 +170,36 @@ gameplay:
 
 @check_left:
   IS_JUST_PRESSED BUTTON_LEFT
-  beq :+
+  beq @skip_left
     SUB_WRAP gameplay_cursor_position, #3, #(N_LANES-3) ; Move the cursor left
-  :
+@skip_left:
 
 @check_right:
   IS_JUST_PRESSED BUTTON_RIGHT
-  beq :+
+  beq @skip_right
     ADD_WRAP gameplay_cursor_position, #3, #(N_LANES) ; Move the cursor right 
-  :
+@skip_right:
 
 @check_a:
   IS_JUST_PRESSED BUTTON_A
-  beq :+
+  beq @skip_a
     lda #2 ; right
     jsr cursor_hit
-  :
+@skip_a:
 
 @check_up:
   IS_JUST_PRESSED BUTTON_UP
-  beq :+
+  beq @skip_up
     lda #1 ; middle
     jsr cursor_hit
-  :
+@skip_up:
 
 @check_b:
   IS_JUST_PRESSED BUTTON_B
-  beq :+
+  beq @skip_b
     lda #0 ; left
     jsr cursor_hit
-  :
+@skip_b:
 
 @update:
   jsr update_cursor_position
@@ -284,33 +284,25 @@ gameplay:
 
 loop:
   ; If we already reached the end of the map then break
-  MOVE16 p1_16, notes_spawned
-  MOVE16 p2_16, chart_length
-  jsr cmp16
+  CMP16 notes_spawned, chart_length
   bcs end
 
   ldy mem_offset
   MOVE lanes, {(note_ptr), Y} ; Read lane byte
   iny
-  MOVE p1_24, {(note_ptr), Y} ; Read the 3 timing bytes
+  MOVE timing1, {(note_ptr), Y} ; Read the 3 timing bytes
   iny
-  MOVE p1_24+1, {(note_ptr), Y} 
+  MOVE timing2, {(note_ptr), Y} 
   iny
-  MOVE p1_24+2, {(note_ptr), Y} 
+  MOVE timing3, {(note_ptr), Y} 
   iny
-  ; Save the timing for later
-  MOVE24 timing1, p1_24
 
   ; Check if the note should be loaded, 
   ; i.e timing - timer <= SPAWN_DIFF
-  MOVE24 p2_24, timer ; compute timing - timer
-  jsr sub24
+  SUB24 t1_24, timing1, timer ; compute timing - timer
   ; Notes are in chronological order so if timing - timer > SPAWN_DIFF then
   ; it's too early for this one so we can just return early
-  MOVE24 p1_24, r1_24 ; compare with SPAWN_DIFF
-  MOVE p2_24, #<SPAWN_DIFF
-  MOVE p2_24+1, #>SPAWN_DIFF
-  jsr cmp24
+  CMP24B t1_24, #<SPAWN_DIFF, #>SPAWN_DIFF, #$00 ; compare with SPAWN_DIFF
   bcs end
   ; If we get here, then the note should be spawned
   ; so commit the mem_offset change and increment the note counter
@@ -338,10 +330,7 @@ loop:
 
 end:
   ; Add the accumulated memory offset to the note pointer
-  MOVE16 p1_16, note_ptr
-  LOAD16 p2_16, mem_offset, #$00
-  jsr add16
-  MOVE16 note_ptr, r1_16
+  ADD16B note_ptr, note_ptr, mem_offset, #$00
   
   POP s5
   POP s4
@@ -463,17 +452,13 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   lda live_notes_hit, X
   bne @increment
   ; Otherwise, compute timer - timing to see if we should remove the note from the queue
-  MOVE24 p1_24, timer
-  LOAD24 p2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
-  jsr sub24
+  SUB24B t1_24, timer, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
   ; Notes in the live queue are stored in increasing time, so
   ; if the timing point hasn't passed yet, then we don't have to check any more notes
   bmi @end
   ; Here, the note has passed the timing point, so check if 
   ; difference >= MISS_DIFF
-  MOVE24 p1_24, r1_24
-  LOAD24 p2_24, #MISS_DIFF, #0, #0
-  jsr cmp24
+  CMP24B t1_24, #MISS_DIFF, #0, #0
   bcc @end
   ; Delete the note and remove from the queue.
   lda live_notes_lanes, X
@@ -514,14 +499,11 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   bcs @end
   
   ; Check note timing difference
-  LOAD24 p1_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
-  MOVE24 p2_24, timer
-  jsr sub24
+  LOAD24 t2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
+  SUB24 t2_24, t2_24, timer
   ; If the note we're looking at is too early, then the rest must be later so just break
-  MOVE24 p1_24, r1_24
   ; TODO: Handle early hit better 
-  LOAD24 p2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
-  jsr cmp24
+  CMP24B t2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
   bcs @end
 
   ; end >= hit_lane

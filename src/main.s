@@ -35,12 +35,16 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   scroll_nt: .res 1 ; Bit 1 of PPUCTRL
 
   ; Temp registers - volatile
+  t1_24:
   t1_16:
     t1: .res 1
     t2: .res 1
   t2_16:
     t3: .res 1
+  t2_24:
     t4: .res 1
+    t5: .res 1
+    t6: .res 1
 
   ; Saved registers - non-volatile
   s1_16:

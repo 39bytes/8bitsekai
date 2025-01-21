@@ -89,7 +89,7 @@
 .endmacro
 
 ; 24 bit subtraction
-.proc SUB24 result, var1, var2
+.macro SUB24 result, var1, var2
   sec
   ; Subtract low bytes
   lda var1
@@ -103,10 +103,10 @@
   lda var1+2
   sbc var2+2
   sta result+2
-.endproc
+.endmacro
 
 ; 24 bit subtraction with separate bytes
-.proc SUB24B result, var1, low, middle, high
+.macro SUB24B result, var1, low, middle, high
   sec
   ; Subtract low bytes
   lda var1
@@ -120,7 +120,7 @@
   lda var1+2
   sbc high
   sta result+2
-.endproc
+.endmacro
 
 ; 16 bit comparison between two numbers B and C
 ; Sets Z if B == C
@@ -154,6 +154,23 @@
   :
 :
 .endmacro
+
+.macro CMP24B var1, low, middle, high
+  ; Compare high bytes
+  lda var1+2
+  cmp high
+  bne :++
+    ; Compare middle bytes
+    lda var1+1
+    cmp middle
+    bne :+
+      ; Compare low bytes
+      lda var1
+      cmp low
+  :
+:
+.endmacro
+
 
 ; Convert a byte to an unpacked binary coded decimal representation
 ; ---Parameters---
