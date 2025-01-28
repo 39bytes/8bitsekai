@@ -136,6 +136,17 @@
 :
 .endmacro
 
+.macro CMP16B var1, low, high
+  ; Compare high bytes
+  lda var1+1
+  cmp high
+  bne :+ 
+    ; The high bytes are equal, we need to compare the low bytes
+    lda var1
+    cmp low
+:
+.endmacro
+
 ; 24 bit comparison between two numbers B and C
 ; Sets Z if B == C
 ; Sets C if B >= C
@@ -169,6 +180,22 @@
       cmp low
   :
 :
+.endmacro
+
+.macro NEGATE24 var
+  lda var+2
+  eor #$FF
+  sta var+2
+
+  lda var+1
+  eor #$FF
+  sta var+1
+
+  lda var
+  eor #$FF
+  sta var
+
+  ADD24B var, var, #$01, #$00, #$00
 .endmacro
 
 

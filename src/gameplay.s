@@ -5,8 +5,7 @@
 QUEUE_LEN = 32
 
 .segment "ZEROPAGE"
-  frame: .res 1 ; The current frame count
-  ten_frames: .res 1
+  frame: .res 2 ; The current frame count
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
   ; --- Chart Relevant Data ---
   ; I'm defining a 'timing unit' to be 1/240 of a beat. 
@@ -115,14 +114,13 @@ gameplay:
   jsr inc_scroll
   jsr handle_gameplay_input
 
-  inc frame
-  ; Tick the timer again once every 10 frames to account for drift
-  ;
-;   INC_WRAP frame, 10
-;   bne :+
-;     jsr tick_ticker
-; :
-  
+  ; Tick the timer again once every 10 seconds to account for drift
+  ADD16B frame, frame, #$01, #$00
+  CMP16B frame, #$59, #$02 ; 601 in hex
+  bcc :+
+    LOAD16 frame, #$00, #$00
+    jsr tick_timer
+:
 
   jsr ppu_update
   jmp @loop
@@ -491,19 +489,14 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   ; Check the live note queue for notes
   ; NOTE: Can be optimized, don't need to preserve the X register
   ; since when it would be clobbered (jsr clear_note) we break from the loop anyway
-  MOVE index, live_notes_head_index ; Stores the index
+  MOVE index, live_notes_head_index
 @loop:
-  ; while (head_index < tail_index)
+  ; while (head_index != tail_index)
   ldx index
   cpx live_notes_tail_index
-  bcs @end
+  beq @end
   
-  ; Check note timing difference
-  LOAD24 t2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
-  SUB24 t2_24, t2_24, timer
-  ; If the note we're looking at is too early, then the rest must be later so just break
-  ; TODO: Handle early hit better 
-  CMP24B t2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
+  jsr check_note_timing
   bcs @end
 
   ; end >= hit_lane
@@ -546,6 +539,20 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jmp @loop
   
 @end:
+  rts
+.endproc
+
+; Subroutine of cursor_hit.
+.proc check_note_timing
+  ; Check note timing difference
+  LOAD24 t2_24, {live_notes_timing1, X}, {live_notes_timing2, X}, {live_notes_timing3, X}
+  SUB24 t2_24, t2_24, timer
+  bpl :+
+    NEGATE24 t2_24
+:
+  ; If the note we're looking at is too early, then the rest must be later so just break
+  ; TODO: Handle early hit better 
+  CMP24B t2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
   rts
 .endproc
 
