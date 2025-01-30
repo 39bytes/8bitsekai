@@ -313,6 +313,7 @@ loop:
   MOVE {live_notes_timing1, X}, timing1
   MOVE {live_notes_timing2, X}, timing2
   MOVE {live_notes_timing3, X}, timing3
+  MOVE {live_notes_hit, X}, #0
   
   ; Compute the scroll tile Y
   jsr scroll_position
