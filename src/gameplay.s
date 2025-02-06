@@ -100,8 +100,8 @@ gameplay:
 
   ; Play music
   lda #1
-  ldx #<music_data_lower
-  ldy #>music_data_lower
+  ldx #<music_data_lower_short_ver
+  ldy #>music_data_lower_short_ver
   jsr famistudio_init
   lda #0
   jsr famistudio_music_play

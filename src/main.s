@@ -263,6 +263,6 @@ main:
 .include "song_select.s"
 .include "gameplay.s"
 
-song_journey:
-  .include "../assets/8bit_lower.s"
+song_lower:
+  .include "../assets/8bit_lower_short_ver.s"
 
