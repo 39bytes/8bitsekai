@@ -2,7 +2,7 @@
 ; | Gameplay |
 ; ============
 
-QUEUE_LEN = 32
+QUEUE_LEN = 28
 
 .segment "ZEROPAGE"
   frame: .res 2 ; The current frame count

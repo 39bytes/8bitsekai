@@ -236,3 +236,61 @@
 
   rts
 .endproc
+
+TEN_THOUSAND = 10000
+ONE_THOUSAND = 1000
+
+; Convert a 16 bit int to an unpacked binary coded decimal representation
+; ---Parameters---
+; p1_16 - Number to convert
+; ---Returns---
+; r1 - Ten thousands
+; r2 - Thousands
+; r3 - Hundreds
+; r4 - Tens
+; r5 - Ones
+.proc hex16_to_decimal
+  ldy #'0'
+
+  ten_thousands = r1
+  thousands = r2
+  hundreds = r3
+  tens = r4
+  ones = r5
+
+  sty ten_thousands
+  sty thousands
+
+@calc_ten_thousands:
+  CMP16B p1_16, #<TEN_THOUSAND, #>TEN_THOUSAND
+  bcc @calc_thousands
+  SUB16B p1_16, p1_16, #<TEN_THOUSAND, #>TEN_THOUSAND
+  inc ten_thousands
+  jmp @calc_ten_thousands
+@calc_thousands:
+  CMP16B p1_16, #<ONE_THOUSAND, #>ONE_THOUSAND
+  bcc @calc_rest
+  SUB16B p1_16, p1_16, #<ONE_THOUSAND, #>ONE_THOUSAND
+  inc thousands
+  jmp @calc_thousands
+@calc_hundreds:
+  CMP16B p1_16, #100, #$00
+  bcc @calc_rest
+  SUB16B p1_16, p1_16, #100, #$00
+  inc hundreds
+  jmp @calc_hundreds
+@calc_rest:
+  lda p1_16
+@calc_tens:
+  cmp #10
+  bcc @calc_ones
+  sbc #10
+  inc tens
+  bne @calc_tens
+@calc_ones:
+  clc
+  adc #'0'
+  sta ones
+  
+  rts
+.endproc

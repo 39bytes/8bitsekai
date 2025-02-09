@@ -10,7 +10,7 @@ str_game_title:  .asciiz "8-Bit Sekai"
 str_press_start: .asciiz "PRESS START"
 
 title_screen:
-  DRAW_STRING str_press_start, 10, 16
+  DRAW_STRING str_press_start, #10, #16
   ; LOAD24 p1_16, #'0', #'6', #'2'
 
 @loop:

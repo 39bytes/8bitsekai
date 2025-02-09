@@ -27,7 +27,7 @@ song_select:
   jsr clear_background
 
   ; Draw the 'Song Select' title and the songs list
-  DRAW_STRING_IMM str_song_select, 10, 6
+  DRAW_STRING_IMM str_song_select, #10, #6
   jsr draw_songs_list
 @loop:
   ; Clear the current cursor position

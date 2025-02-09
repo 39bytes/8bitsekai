@@ -270,16 +270,16 @@ DRAW_STRING_IMPL draw_string_imm, ppu_set_tile
 .macro DRAW_STRING static_str, tile_x, tile_y
   MOVE ptr,     #<static_str ; write low byte
   MOVE {ptr+1}, #>static_str ; write high byte
-  ldx #tile_x
-  ldy #tile_y
+  ldx tile_x
+  ldy tile_y
   jsr draw_string
 .endmacro
 
 .macro DRAW_STRING_IMM static_str, tile_x, tile_y
   MOVE ptr,     #<static_str ; write low byte
   MOVE {ptr+1}, #>static_str ; write high byte
-  ldx #tile_x
-  ldy #tile_y
+  ldx tile_x
+  ldy tile_y
   jsr draw_string_imm
 .endmacro
 
