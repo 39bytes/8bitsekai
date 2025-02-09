@@ -48,6 +48,21 @@
   rts
 .endproc
 
+; Block for X frames
+.proc wait
+  :
+    jsr ppu_update
+    dex
+    bne :-
+
+  rts
+.endproc
+
+.macro WAIT n_frames
+  ldx n_frames
+  jsr wait
+.endmacro
+
 
 ; Set tile at X/Y to A next time ppu_update is called
 ; Can be used with rendering on

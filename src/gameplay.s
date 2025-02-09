@@ -86,15 +86,41 @@ gameplay:
   SET_SPRITE combo_text+4, #16, #'0', #PAL0, #24
   SET_SPRITE combo_text+8, #16, #'0', #PAL0, #32
 
+  MOVE gameplay_cursor_position, #3
+
   ; Reset state
   lda #0
+  sta frame
+  sta frame+1
+
   sta timer
   sta timer+1
   sta timer+2
   sta notes_spawned
   sta notes_spawned+1
+  sta combo
+  sta combo+1
+
+  sta perfect_hits
+  sta perfect_hits+1
+  sta great_hits
+  sta great_hits+1
+  sta good_hits
+  sta good_hits+1
+  sta bad_hits
+  sta bad_hits+1
+  sta misses
+  sta misses+1
+
   sta live_notes_head_index
   sta live_notes_tail_index
+
+  note_queue = live_notes_lanes
+  ldx #(QUEUE_LEN * 6)
+  :
+    sta note_queue, X
+    dex
+    bne :-
 
   ; Setup scroll Y to bottom of screen initially
   MOVE scroll_y, #239 
