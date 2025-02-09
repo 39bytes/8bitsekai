@@ -229,6 +229,17 @@
   rts
 .endproc
 
+.proc clear_sprites
+  lda #0
+  ldx #0
+  :
+    sta oam, X
+    inx
+    bne :-
+  
+  rts
+.endproc
+
 ; Draws a null terminated string beginning at X, Y
 ; ---Parameters---
 ; ptr - Address of null terminated string

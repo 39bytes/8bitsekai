@@ -268,6 +268,7 @@ main:
 .include "title_screen.s"
 .include "song_select.s"
 .include "gameplay.s"
+.include "score_screen.s"
 
 song_lower:
   .include "../assets/8bit_lower_short_ver.s"

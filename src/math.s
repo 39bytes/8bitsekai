@@ -260,6 +260,8 @@ ONE_THOUSAND = 1000
 
   sty ten_thousands
   sty thousands
+  sty hundreds
+  sty tens
 
 @calc_ten_thousands:
   CMP16B p1_16, #<TEN_THOUSAND, #>TEN_THOUSAND
@@ -269,7 +271,7 @@ ONE_THOUSAND = 1000
   jmp @calc_ten_thousands
 @calc_thousands:
   CMP16B p1_16, #<ONE_THOUSAND, #>ONE_THOUSAND
-  bcc @calc_rest
+  bcc @calc_hundreds
   SUB16B p1_16, p1_16, #<ONE_THOUSAND, #>ONE_THOUSAND
   inc thousands
   jmp @calc_thousands

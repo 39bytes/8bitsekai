@@ -9,11 +9,12 @@ QUEUE_LEN = 28
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
   ; --- Chart Relevant Data ---
   ; I'm defining a 'timing unit' to be 1/240 of a beat. 
-  timer:         .res 3 ; For note timing, measured in timing units
-  frame_units:   .res 1 ; How many timing units occur in 1 frame
-  chart_length:  .res 2 ; The number of notes in the chart
-  notes_spawned: .res 2 ; The number of notes we've already spawned
-  note_ptr:      .res 2 ; Pointer to the most recently non-spawned note
+  timer:              .res 3 ; For note timing, measured in timing units
+  frame_units:        .res 1 ; How many timing units occur in 1 frame
+  chart_length:       .res 3 ; 
+  chart_total_notes:  .res 2 ; The number of notes in the chart
+  notes_spawned:      .res 2 ; The number of notes we've already spawned
+  note_ptr:           .res 2 ; Pointer to the most recently non-spawned note
 
   ; Judgements
   combo:         .res 2 ; Current combo
@@ -102,8 +103,9 @@ gameplay:
   clc
   rol
   sta frame_units 
-  MOVE16 chart_length, {chart+1} ; BPM is followed by the chart length
-  LOAD16 note_ptr, #<(chart+3), #>(chart+3) ; Set the note pointer
+  MOVE24 chart_length, {chart+1}      ; BPM is followed by the chart length
+  MOVE16 chart_total_notes, {chart+4} ; followed by the number of notes
+  LOAD16 note_ptr, #<(chart+6), #>(chart+6) ; Set the note pointer
 
   ; Play music
   lda #1
@@ -114,6 +116,12 @@ gameplay:
   jsr famistudio_music_play
 
 @loop:
+  ; If the chart ended, then go to the score screen
+  CMP24 timer, chart_length
+  bcc :+
+    jmp score_screen
+:
+
   ; Gameplay logic
   jsr load_notes
   jsr check_delete_note
@@ -294,7 +302,7 @@ gameplay:
 
 loop:
   ; If we already reached the end of the map then break
-  CMP16 notes_spawned, chart_length
+  CMP16 notes_spawned, chart_total_notes
   bcs end
 
   ldy mem_offset
