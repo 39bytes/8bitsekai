@@ -36,7 +36,7 @@ N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
 LANE_Y = 28      ; Y position of the lanes
-SCROLL_SPEED = 4 ; Vertical scroll speed
+SCROLL_SPEED = 3 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
 BPM = 4
@@ -110,18 +110,22 @@ gameplay:
   ; Gameplay logic
   jsr load_notes
   jsr check_delete_note
-  jsr tick_timer       
+
+  ; Every ~10 seconds, there will be an extra frame, so don't tick on that one
+;   ADD16B frame, frame, #$01, #$00
+;   CMP16B frame, #$59, #$02 ; 601 in hex
+;   bcs @skiptick
+; @iftick:
+;     jsr tick_timer
+;     jsr inc_scroll
+;     jmp @endif
+; @skiptick:
+;     load16 frame, #$00, #$00
+; @endif:
+  jsr tick_timer
   jsr inc_scroll
+
   jsr handle_gameplay_input
-
-  ; Tick the timer again once every 10 seconds to account for drift
-  ADD16B frame, frame, #$01, #$00
-  CMP16B frame, #$59, #$02 ; 601 in hex
-  bcc :+
-    LOAD16 frame, #$00, #$00
-    jsr tick_timer
-:
-
   jsr ppu_update
   jmp @loop
 
