@@ -28,6 +28,10 @@
   sta result+1
 .endmacro
 
+.macro INC16 result
+  ADD16B result, result, #$01, #$00
+.endmacro
+
 ; 24 bit addition
 .macro ADD24 result, var1, var2
   clc

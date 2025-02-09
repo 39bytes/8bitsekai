@@ -13,9 +13,16 @@ QUEUE_LEN = 32
   frame_units:   .res 1 ; How many timing units occur in 1 frame
   chart_length:  .res 2 ; The number of notes in the chart
   notes_spawned: .res 2 ; The number of notes we've already spawned
-  notes_hit:     .res 2 ; The number of notes that have been hit successfully
   note_ptr:      .res 2 ; Pointer to the most recently non-spawned note
-  combo:         .res 1 ; Current combo
+
+  ; Judgements
+  combo:         .res 2 ; Current combo
+  perfect_hits:  .res 2 
+  great_hits:    .res 2 
+  good_hits:     .res 2 
+  bad_hits:      .res 2 
+  misses:        .res 2 
+
   
   ; The queue of notes currently present on the playfield
   live_notes_head_index: .res 1
@@ -36,7 +43,7 @@ N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
 LANE_X = 8       ; X position of the start of the lanes
 LANE_Y = 28      ; Y position of the lanes
-SCROLL_SPEED = 3 ; Vertical scroll speed
+SCROLL_SPEED = 4 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
 BPM = 4
@@ -122,7 +129,8 @@ gameplay:
 ; @skiptick:
 ;     load16 frame, #$00, #$00
 ; @endif:
-  jsr tick_timer
+  ; Tick the timer
+  ADD24B timer, timer, frame_units, #$00, #$00
   jsr inc_scroll
 
   jsr handle_gameplay_input
@@ -468,7 +476,8 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   ldy live_notes_nt_y, X
   jsr clear_note
   ; Missed, so break combo
-  MOVE combo, #0
+  LOAD16 combo, #$00, #$00
+  INC16 misses             
   jsr draw_combo
 @increment:
   INC_WRAP live_notes_head_index, #QUEUE_LEN
@@ -525,7 +534,7 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   bcc @next
   
   ; If we get here, then the note should be hit
-  ; TODO: Judgement logic
+  jsr calc_note_judgement
 
   ; Set hit to true
   MOVE {live_notes_hit, X}, #1
@@ -533,8 +542,7 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   lda live_notes_lanes, X
   ldy live_notes_nt_y, X
   jsr clear_note
-  ; Increment combo
-  inc combo
+  ; Draw the new combo
   jsr draw_combo
   ; Break from the loop
   jmp @end
@@ -558,6 +566,37 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   ; If the note we're looking at is too early, then the rest must be later so just break
   ; TODO: Handle early hit better 
   CMP24B t2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
+  rts
+.endproc
+
+.proc calc_note_judgement
+@miss:
+  CMP24B t2_24, #<MISS_DIFF, #>MISS_DIFF, #$00
+  bcc @bad
+  ; If we missed, then break combo...
+  INC16 misses             
+  LOAD16 combo, #$00, #$00
+  rts ; Then early return, because we don't want to increment the combo again
+@bad:
+  CMP24B t2_24, #<BAD_DIFF, #>BAD_DIFF, #$00
+  bcc @good
+  INC16 bad_hits
+  jmp @hit
+@good:
+  CMP24B t2_24, #<GOOD_DIFF, #>GOOD_DIFF, #$00
+  bcc @great
+  INC16 good_hits
+  jmp @hit
+@great:
+  CMP24B t2_24, #<GREAT_DIFF, #>GREAT_DIFF, #$00
+  bcc @perfect
+  INC16 great_hits
+  jmp @hit
+@perfect:
+  INC16 perfect_hits ; Fallthrough case, don't need to do any extra comparisons
+
+@hit:
+  INC16 combo        ; For any of the hits, we should increment the combo
   rts
 .endproc
 
