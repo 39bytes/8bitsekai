@@ -95,7 +95,8 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   oam:
     sprite0: .res 4
     gameplay_cursor: .res 24
-    combo_text: .res 12
+    combo_text: .res 16
+    judgement_text: .res 28
 
 .include "ppu.s"
 .include "input.s"

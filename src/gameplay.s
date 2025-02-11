@@ -37,13 +37,13 @@ QUEUE_LEN = 28
   live_notes_hit:        .res QUEUE_LEN
 
 
+SCREEN_WIDTH = 256
 SCREEN_HEIGHT = 232
 TILE_WIDTH = 8
 CURSOR_WIDTH = 3 ; Lane width of the cursor
 N_LANES = 9      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
-LANE_X = 8       ; X position of the start of the lanes
-LANE_Y = 28      ; Y position of the lanes
+LANE_X = 4       ; X position of the start of the lanes
 SCROLL_SPEED = 4 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
@@ -82,9 +82,21 @@ gameplay:
   SET_SPRITE gameplay_cursor+20, #220, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Setup combo sprites
-  SET_SPRITE combo_text, #16, #'0', #PAL0, #16
-  SET_SPRITE combo_text+4, #16, #'0', #PAL0, #24
-  SET_SPRITE combo_text+8, #16, #'0', #PAL0, #32
+  SET_SPRITE combo_text, #112, #'0', #PAL0, #200
+  SET_SPRITE combo_text+4, #112, #'0', #PAL0, #208
+  SET_SPRITE combo_text+8, #112, #'0', #PAL0, #216
+  SET_SPRITE combo_text+12, #112, #'0', #PAL0, #224
+
+  ; Setup judgement sprites
+  SET_SPRITE judgement_text, #128, #0, #PAL0, #0
+  SET_SPRITE judgement_text+4, #128, #0, #PAL0, #0
+  SET_SPRITE judgement_text+8, #128, #0, #PAL0, #0
+  SET_SPRITE judgement_text+12, #128, #0, #PAL0, #0
+  SET_SPRITE judgement_text+16, #128, #0, #PAL0, #0
+  SET_SPRITE judgement_text+20, #128, #0, #PAL0, #0
+  SET_SPRITE judgement_text+24, #128, #0, #PAL0, #0
+
+  ; Setup judgement sprites
 
   MOVE gameplay_cursor_position, #3
 
@@ -509,7 +521,8 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jsr clear_note
   ; Missed, so break combo
   LOAD16 combo, #$00, #$00
-  INC16 misses             
+  INC16 misses
+  jsr draw_miss
   jsr draw_combo
 @increment:
   INC_WRAP live_notes_head_index, #QUEUE_LEN
@@ -608,24 +621,29 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   ; If we missed, then break combo...
   INC16 misses             
   LOAD16 combo, #$00, #$00
+  jsr draw_miss
   rts ; Then early return, because we don't want to increment the combo again
 @bad:
   CMP24B t2_24, #<BAD_DIFF, #>BAD_DIFF, #$00
   bcc @good
   INC16 bad_hits
+  jsr draw_bad
   jmp @hit
 @good:
   CMP24B t2_24, #<GOOD_DIFF, #>GOOD_DIFF, #$00
   bcc @great
   INC16 good_hits
+  jsr draw_good
   jmp @hit
 @great:
   CMP24B t2_24, #<GREAT_DIFF, #>GREAT_DIFF, #$00
   bcc @perfect
   INC16 great_hits
+  jsr draw_great
   jmp @hit
 @perfect:
   INC16 perfect_hits ; Fallthrough case, don't need to do any extra comparisons
+  jsr draw_perfect
 
 @hit:
   INC16 combo        ; For any of the hits, we should increment the combo
@@ -633,12 +651,149 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
 .endproc
 
 .proc draw_combo
-  lda combo
-  jsr hex8_to_decimal
+  MOVE16 p1_16, combo
+  jsr hex16_to_decimal
   
-  MOVE combo_text+1, r1_24
-  MOVE combo_text+5, r1_24+1
-  MOVE combo_text+9, r1_24+2
+  MOVE combo_text+1, r2
+  MOVE combo_text+5, r3
+  MOVE combo_text+9, r4
+  MOVE combo_text+13, r5
 
+  rts
+.endproc
+
+LEFT_WIDTH = (LANE_X + N_LANES * LANE_WIDTH) * TILE_WIDTH
+RIGHT_CENTER = (SCREEN_WIDTH - LEFT_WIDTH) / 2 + LEFT_WIDTH
+
+; width of text is 8 * length
+; so start it at center - (text_width / 2)
+
+PERFECT_WIDTH = .strlen("PERFECT") * TILE_WIDTH
+PERFECT_START = RIGHT_CENTER - (PERFECT_WIDTH / 2)
+.proc draw_perfect
+  MOVE judgement_text+1, #'P'
+  MOVE judgement_text+3, #(PERFECT_START)
+
+  MOVE judgement_text+5, #'E'
+  MOVE judgement_text+7, #(PERFECT_START+8)
+
+  MOVE judgement_text+9, #'R'
+  MOVE judgement_text+11, #(PERFECT_START+16)
+
+  MOVE judgement_text+13, #'F'
+  MOVE judgement_text+15, #(PERFECT_START+24)
+
+  MOVE judgement_text+17, #'E'
+  MOVE judgement_text+19, #(PERFECT_START+32)
+
+  MOVE judgement_text+21, #'C'
+  MOVE judgement_text+23, #(PERFECT_START+40)
+
+  MOVE judgement_text+25, #'T'
+  MOVE judgement_text+27, #(PERFECT_START+48)
+  rts
+.endproc
+
+GREAT_WIDTH = .strlen("GREAT") * TILE_WIDTH
+GREAT_START = RIGHT_CENTER - (GREAT_WIDTH / 2)
+.proc draw_great
+  MOVE judgement_text+1, #'G'
+  MOVE judgement_text+3, #(GREAT_START)
+
+  MOVE judgement_text+5, #'R'
+  MOVE judgement_text+7, #(GREAT_START+8)
+
+  MOVE judgement_text+9, #'E'
+  MOVE judgement_text+11, #(GREAT_START+16)
+
+  MOVE judgement_text+13, #'A'
+  MOVE judgement_text+15, #(GREAT_START+24)
+
+  MOVE judgement_text+17, #'T'
+  MOVE judgement_text+19, #(GREAT_START+32)
+
+  MOVE judgement_text+21, #0
+  MOVE judgement_text+23, #(GREAT_START+40)
+
+  MOVE judgement_text+25, #0
+  MOVE judgement_text+27, #(GREAT_START+48)
+  rts
+.endproc
+
+GOOD_WIDTH = .strlen("GOOD") * TILE_WIDTH
+GOOD_START = RIGHT_CENTER - (GOOD_WIDTH / 2)
+.proc draw_good
+  MOVE judgement_text+1, #'G'
+  MOVE judgement_text+3, #(GOOD_START)
+
+  MOVE judgement_text+5, #'O'
+  MOVE judgement_text+7, #(GOOD_START+8)
+
+  MOVE judgement_text+9, #'O'
+  MOVE judgement_text+11, #(GOOD_START+16)
+
+  MOVE judgement_text+13, #'D'
+  MOVE judgement_text+15, #(GOOD_START+24)
+
+  MOVE judgement_text+17, #0
+  MOVE judgement_text+19, #(GOOD_START+32)
+
+  MOVE judgement_text+21, #0
+  MOVE judgement_text+23, #(GOOD_START+40)
+
+  MOVE judgement_text+25, #0
+  MOVE judgement_text+27, #(GOOD_START+48)
+  rts
+.endproc
+
+BAD_WIDTH = .strlen("BAD") * TILE_WIDTH
+BAD_START = RIGHT_CENTER - (BAD_WIDTH / 2)
+.proc draw_bad
+  MOVE judgement_text+1, #'B'
+  MOVE judgement_text+3, #(BAD_START)
+
+  MOVE judgement_text+5, #'A'
+  MOVE judgement_text+7, #(BAD_START+8)
+
+  MOVE judgement_text+9, #'D'
+  MOVE judgement_text+11, #(BAD_START+16)
+
+  MOVE judgement_text+13, #0
+  MOVE judgement_text+15, #(BAD_START+24)
+
+  MOVE judgement_text+17, #0
+  MOVE judgement_text+19, #(BAD_START+32)
+
+  MOVE judgement_text+21, #0
+  MOVE judgement_text+23, #(BAD_START+40)
+
+  MOVE judgement_text+25, #0
+  MOVE judgement_text+27, #(BAD_START+48)
+  rts
+.endproc
+
+MISS_WIDTH = .strlen("MISS") * TILE_WIDTH
+MISS_START = RIGHT_CENTER - (MISS_WIDTH / 2)
+.proc draw_miss
+  MOVE judgement_text+1, #'M'
+  MOVE judgement_text+3, #(MISS_START)
+
+  MOVE judgement_text+5, #'I'
+  MOVE judgement_text+7, #(MISS_START+8)
+
+  MOVE judgement_text+9, #'S'
+  MOVE judgement_text+11, #(MISS_START+16)
+
+  MOVE judgement_text+13, #'S'
+  MOVE judgement_text+15, #(MISS_START+24)
+
+  MOVE judgement_text+17, #0
+  MOVE judgement_text+19, #(MISS_START+32)
+
+  MOVE judgement_text+21, #0
+  MOVE judgement_text+23, #(MISS_START+40)
+
+  MOVE judgement_text+25, #0
+  MOVE judgement_text+27, #(MISS_START+48)
   rts
 .endproc
