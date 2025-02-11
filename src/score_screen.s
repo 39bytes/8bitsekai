@@ -47,7 +47,7 @@ score_screen:
   WAIT #20
   SCORE_LINE str_miss, misses, 10, 14
   WAIT #20
-  SCORE_LINE str_combo, combo, 10, 16
+  SCORE_LINE str_combo, max_combo, 10, 16
 
   WAIT #60
   DRAW_STRING str_press_select, #10, #20
