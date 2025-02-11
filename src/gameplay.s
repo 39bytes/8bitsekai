@@ -16,8 +16,9 @@ QUEUE_LEN = 28
   notes_spawned:      .res 2 ; The number of notes we've already spawned
   note_ptr:           .res 2 ; Pointer to the most recently non-spawned note
 
+  combo:         .res 2
+  max_combo:     .res 2
   ; Judgements
-  combo:         .res 2 ; Current combo
   perfect_hits:  .res 2 
   great_hits:    .res 2 
   good_hits:     .res 2 
@@ -112,6 +113,8 @@ gameplay:
   sta notes_spawned+1
   sta combo
   sta combo+1
+  sta max_combo
+  sta max_combo+1
 
   sta perfect_hits
   sta perfect_hits+1
@@ -165,17 +168,20 @@ gameplay:
   jsr check_delete_note
 
   ; Every ~10 seconds, there will be an extra frame, so don't tick on that one
-  ADD16B frame, frame, #$01, #$00
-  CMP16B frame, #$59, #$02 ; 601 in hex
-  bcs @skiptick
-@iftick:
-    ; Tick the timer
-    ADD24B timer, timer, frame_units, #$00, #$00
-    jsr inc_scroll
-    jmp @endif
-@skiptick:
-    LOAD16 frame, #$00, #$00
-@endif:
+;   ADD16B frame, frame, #$01, #$00
+;   CMP16B frame, #$59, #$02 ; 601 in hex
+;   bcs @skiptick
+; @iftick:
+;     ; Tick the timer
+;     ADD24B timer, timer, frame_units, #$00, #$00
+;     jsr inc_scroll
+;     jmp @endif
+; @skiptick:
+;     LOAD16 frame, #$00, #$00
+; @endif:
+
+  ADD24B timer, timer, frame_units, #$00, #$00
+  jsr inc_scroll
 
   jsr handle_gameplay_input
   jsr ppu_update
@@ -646,7 +652,11 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jsr draw_perfect
 
 @hit:
-  INC16 combo        ; For any of the hits, we should increment the combo
+  INC16 combo            ; For any of the hits, we should increment the combo
+  CMP16 combo, max_combo ; Then compute a new max combo
+  bcc :+
+    MOVE16 max_combo, combo
+:
   rts
 .endproc
 

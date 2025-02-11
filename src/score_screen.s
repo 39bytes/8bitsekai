@@ -1,6 +1,8 @@
 .segment "CODE"
 
 str_results: .asciiz "RESULTS"
+
+str_combo: .asciiz "COMBO"
 str_perfect: .asciiz "PERFECT"
 str_great:   .asciiz "GREAT"
 str_good:    .asciiz "GOOD"
@@ -44,6 +46,8 @@ score_screen:
   SCORE_LINE str_bad, bad_hits, 10, 13
   WAIT #20
   SCORE_LINE str_miss, misses, 10, 14
+  WAIT #20
+  SCORE_LINE str_combo, combo, 10, 16
 
   WAIT #60
   DRAW_STRING str_press_select, #10, #20
