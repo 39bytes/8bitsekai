@@ -37,7 +37,7 @@ QUEUE_LEN = 28
   live_notes_hit:        .res QUEUE_LEN
 
 
-SCREEN_HEIGHT = 240
+SCREEN_HEIGHT = 232
 TILE_WIDTH = 8
 CURSOR_WIDTH = 3 ; Lane width of the cursor
 N_LANES = 9      ; Total number of lanes
@@ -74,12 +74,12 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #228, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
-  SET_SPRITE gameplay_cursor+4, #228, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
-  SET_SPRITE gameplay_cursor+8, #228, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
-  SET_SPRITE gameplay_cursor+12, #228, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
-  SET_SPRITE gameplay_cursor+16, #228, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
-  SET_SPRITE gameplay_cursor+20, #228, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
+  SET_SPRITE gameplay_cursor, #220, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
+  SET_SPRITE gameplay_cursor+4, #220, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
+  SET_SPRITE gameplay_cursor+8, #220, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
+  SET_SPRITE gameplay_cursor+12, #220, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
+  SET_SPRITE gameplay_cursor+16, #220, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
+  SET_SPRITE gameplay_cursor+20, #220, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Setup combo sprites
   SET_SPRITE combo_text, #16, #'0', #PAL0, #16
@@ -153,19 +153,17 @@ gameplay:
   jsr check_delete_note
 
   ; Every ~10 seconds, there will be an extra frame, so don't tick on that one
-;   ADD16B frame, frame, #$01, #$00
-;   CMP16B frame, #$59, #$02 ; 601 in hex
-;   bcs @skiptick
-; @iftick:
-;     jsr tick_timer
-;     jsr inc_scroll
-;     jmp @endif
-; @skiptick:
-;     load16 frame, #$00, #$00
-; @endif:
-  ; Tick the timer
-  ADD24B timer, timer, frame_units, #$00, #$00
-  jsr inc_scroll
+  ADD16B frame, frame, #$01, #$00
+  CMP16B frame, #$59, #$02 ; 601 in hex
+  bcs @skiptick
+@iftick:
+    ; Tick the timer
+    ADD24B timer, timer, frame_units, #$00, #$00
+    jsr inc_scroll
+    jmp @endif
+@skiptick:
+    LOAD16 frame, #$00, #$00
+@endif:
 
   jsr handle_gameplay_input
   jsr ppu_update
