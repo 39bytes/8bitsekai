@@ -39,7 +39,7 @@ QUEUE_LEN = 28
 
 
 SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 232
+SCREEN_HEIGHT = 216
 TILE_WIDTH = 8
 CURSOR_WIDTH = 3 ; Lane width of the cursor
 N_LANES = 9      ; Total number of lanes
@@ -50,14 +50,14 @@ SCROLL_SPEED = 4 ; Vertical scroll speed
 ; TODO: Dynamically calculate this
 BPM = 4
 ; How many timing units ahead we should spawn the note?
-SPAWN_DIFF = (SCREEN_HEIGHT + TILE_WIDTH) / SCROLL_SPEED * BPM * 2 
+SPAWN_DIFF = (SCREEN_HEIGHT) / SCROLL_SPEED * BPM * 2 
 ; How many timing units should have passed before force missing a live note?
 PERFECT_DIFF = (BPM * 2) * 2
 GREAT_DIFF = (BPM * 2) * 4
-GOOD_DIFF = (BPM * 2) * 8
-BAD_DIFF = (BPM * 2) * 12
-MISS_DIFF = (BPM * 2) * 20
-IGNORE_DIFF = (BPM * 2) * 30
+GOOD_DIFF = (BPM * 2) * 6
+BAD_DIFF = (BPM * 2) * 8
+MISS_DIFF = (BPM * 2) * 10
+IGNORE_DIFF = (BPM * 2) * 15
 
 .segment "CODE"
 
@@ -75,12 +75,12 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #220, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
-  SET_SPRITE gameplay_cursor+4, #220, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
-  SET_SPRITE gameplay_cursor+8, #220, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
-  SET_SPRITE gameplay_cursor+12, #220, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
-  SET_SPRITE gameplay_cursor+16, #220, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
-  SET_SPRITE gameplay_cursor+20, #220, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
+  SET_SPRITE gameplay_cursor, #204, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
+  SET_SPRITE gameplay_cursor+4, #204, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
+  SET_SPRITE gameplay_cursor+8, #204, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
+  SET_SPRITE gameplay_cursor+12, #204, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
+  SET_SPRITE gameplay_cursor+16, #204, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
+  SET_SPRITE gameplay_cursor+20, #204, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Setup combo sprites
   SET_SPRITE combo_text, #112, #'0', #PAL0, #200
