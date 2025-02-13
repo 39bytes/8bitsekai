@@ -1,2 +1,2 @@
 # 8bitsekai
-A Vocaloid rhythm game for the NES.
+A vocaloid rhythm game for the NES. (proper README and blog post coming soon!)
