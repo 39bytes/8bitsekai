@@ -1,5 +1,5 @@
-.include "symbols.s"
-.include "macros.s"
+.include "lib/symbols.s"
+.include "lib/macros.s"
 
 INES_MAPPER = 0 ; Mapper 0
 INES_MIRROR = 0 ; Horizontal mirroring
@@ -98,9 +98,9 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
     combo_text: .res 16
     judgement_text: .res 28
 
-.include "ppu.s"
-.include "input.s"
-.include "math.s"
+.include "lib/ppu.s"
+.include "lib/input.s"
+.include "lib/math.s"
 .include "../vendor/famistudio_ca65.s"
 
 .segment "CODE"
@@ -266,10 +266,10 @@ main:
   jmp title_screen
 
 
-.include "title_screen.s"
-.include "song_select.s"
-.include "gameplay.s"
-.include "score_screen.s"
+.include "screens/title.s"
+.include "screens/song_select.s"
+.include "screens/gameplay.s"
+.include "screens/score.s"
 
 song_lower:
   .include "../assets/8bit_lower_short_ver.s"
