@@ -38,10 +38,10 @@
 SCREEN_WIDTH = 256
 SCREEN_HEIGHT = 208
 TILE_WIDTH = 8
-CURSOR_WIDTH = 3 ; Lane width of the cursor
-N_LANES = 9      ; Total number of lanes
+CURSOR_WIDTH = 2 ; Lane width of the cursor
+N_LANES = 6      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
-LANE_X = 4       ; X position of the start of the lanes
+LANE_X = 6       ; X position of the start of the lanes
 SCROLL_SPEED = 4 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
@@ -76,8 +76,6 @@ gameplay:
   SET_SPRITE gameplay_cursor+4, #196, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
   SET_SPRITE gameplay_cursor+8, #196, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
   SET_SPRITE gameplay_cursor+12, #196, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
-  SET_SPRITE gameplay_cursor+16, #196, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
-  SET_SPRITE gameplay_cursor+20, #196, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Setup combo sprites
   SET_SPRITE combo_text, #112, #'0', #PAL0, #200
@@ -121,7 +119,7 @@ gameplay:
 
   ; Setup judgement sprites
 
-  MOVE gameplay_cursor_position, #3
+  MOVE gameplay_cursor_position, #2
 
   ; Reset state
   lda #0
@@ -253,28 +251,21 @@ gameplay:
 @check_left:
   IS_JUST_PRESSED BUTTON_LEFT
   beq @skip_left
-    SUB_WRAP gameplay_cursor_position, #3, #(N_LANES-3) ; Move the cursor left
+    SUB_WRAP gameplay_cursor_position, #2, #(N_LANES-2) ; Move the cursor left
 @skip_left:
 
 @check_right:
   IS_JUST_PRESSED BUTTON_RIGHT
   beq @skip_right
-    ADD_WRAP gameplay_cursor_position, #3, #(N_LANES) ; Move the cursor right 
+    ADD_WRAP gameplay_cursor_position, #2, #(N_LANES) ; Move the cursor right 
 @skip_right:
 
 @check_a:
   IS_JUST_PRESSED BUTTON_A
   beq @skip_a
-    lda #2 ; right
+    lda #1 ; right
     jsr cursor_hit
 @skip_a:
-
-@check_up:
-  IS_JUST_PRESSED BUTTON_UP
-  beq @skip_up
-    lda #1 ; middle
-    jsr cursor_hit
-@skip_up:
 
 @check_b:
   IS_JUST_PRESSED BUTTON_B
