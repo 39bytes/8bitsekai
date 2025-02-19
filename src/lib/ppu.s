@@ -21,6 +21,8 @@
   CursorLeft = $02
   CursorMiddle = $03
   CursorRight = $04
+  NoteLeft = $05
+  NoteRight = $06
 .endenum
 
 ; Turn off the PPU rendering for manual nametable updates
@@ -345,11 +347,37 @@ DRAW_STRING_IMPL draw_string_imm, ppu_set_tile
   rts
 .endproc
 
-.macro DEBUG_VAR var, tile_x, tile_y
-  lda var
-  jsr hex8_to_decimal
-  MOVE24 p1_24, r1_24
-  ldx #tile_x
-  ldy #tile_y
-  jsr draw_bcd_number
-.endmacro
+; Converts the current scroll position to a nametable tile position.
+; ---Returns---
+; A - the computed tile position
+.proc scroll_position
+  tile_y = t1
+  nt_bit = t2
+
+  MOVE nt_bit, scroll_nt
+  lda scroll_y ; Divide by 8 (tile size)
+  lsr
+  lsr 
+  lsr
+  sta tile_y
+  
+  ; If we're on tile 0 of a nametable, flip the nametable bit, set to 29 (last row of a nametable)
+  cmp #0
+  bne :+
+    lda nt_bit
+    eor #$02
+    sta nt_bit
+    MOVE tile_y, #29
+:
+  ; If we're on nametable $2800, then we need to add 64 as an offset
+  lda nt_bit
+  beq :+
+    lda tile_y
+    clc
+    adc #64
+    sta tile_y
+:
+
+  lda tile_y
+  rts
+.endproc

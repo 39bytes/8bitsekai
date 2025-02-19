@@ -80,6 +80,15 @@
 :
 .endmacro
 
+; Increment X, wrapping to 0 if X >= max after incrementing.
+.macro INX_WRAP max
+  inx
+  cpx max
+  bcc :+
+    ldx #0
+:
+.endmacro
+
 ; Increment `var`, wrapping to 0 if `var >= max` after incrementing.
 .macro INC_WRAP var, max
   clc

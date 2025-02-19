@@ -2,8 +2,6 @@
 ; | Gameplay |
 ; ============
 
-QUEUE_LEN = 28
-
 .segment "ZEROPAGE"
   frame: .res 2 ; The current frame count
   gameplay_cursor_position: .res 1 ; Lane index of the beginning
@@ -29,17 +27,16 @@ QUEUE_LEN = 28
   ; The queue of notes currently present on the playfield
   live_notes_head_index: .res 1
   live_notes_tail_index: .res 1
-  live_notes_lanes:      .res QUEUE_LEN
-  live_notes_timing1:    .res QUEUE_LEN
-  live_notes_timing2:    .res QUEUE_LEN
-  live_notes_timing3:    .res QUEUE_LEN
-  live_notes_nt_y:       .res QUEUE_LEN
+  live_notes_lanes:      .res MAX_NOTES
+  live_notes_timing1:    .res MAX_NOTES
+  live_notes_timing2:    .res MAX_NOTES
+  live_notes_timing3:    .res MAX_NOTES
   ; TODO: Waste less space with this
-  live_notes_hit:        .res QUEUE_LEN
+  live_notes_hit:        .res MAX_NOTES
 
 
 SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 216
+SCREEN_HEIGHT = 208
 TILE_WIDTH = 8
 CURSOR_WIDTH = 3 ; Lane width of the cursor
 N_LANES = 9      ; Total number of lanes
@@ -50,7 +47,7 @@ SCROLL_SPEED = 4 ; Vertical scroll speed
 ; TODO: Dynamically calculate this
 BPM = 4
 ; How many timing units ahead we should spawn the note?
-SPAWN_DIFF = (SCREEN_HEIGHT) / SCROLL_SPEED * BPM * 2 
+SPAWN_DIFF = SCREEN_HEIGHT / SCROLL_SPEED * BPM * 2 
 ; How many timing units should have passed before force missing a live note?
 PERFECT_DIFF = (BPM * 2) * 2
 GREAT_DIFF = (BPM * 2) * 4
@@ -75,12 +72,12 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #204, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
-  SET_SPRITE gameplay_cursor+4, #204, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
-  SET_SPRITE gameplay_cursor+8, #204, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
-  SET_SPRITE gameplay_cursor+12, #204, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
-  SET_SPRITE gameplay_cursor+16, #204, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
-  SET_SPRITE gameplay_cursor+20, #204, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
+  SET_SPRITE gameplay_cursor, #196, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
+  SET_SPRITE gameplay_cursor+4, #196, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
+  SET_SPRITE gameplay_cursor+8, #196, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
+  SET_SPRITE gameplay_cursor+12, #196, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
+  SET_SPRITE gameplay_cursor+16, #196, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #160
+  SET_SPRITE gameplay_cursor+20, #196, #Sprite::CursorRight, #(BEHIND_BACKGROUND | PAL1), #168 
 
   ; Setup combo sprites
   SET_SPRITE combo_text, #112, #'0', #PAL0, #200
@@ -96,6 +93,31 @@ gameplay:
   SET_SPRITE judgement_text+16, #128, #0, #PAL0, #0
   SET_SPRITE judgement_text+20, #128, #0, #PAL0, #0
   SET_SPRITE judgement_text+24, #128, #0, #PAL0, #0
+
+  ; Setup note sprites, put them off screen
+  ldx #0
+@set_note:
+  txa
+  asl
+  asl
+  asl
+  tay
+  
+  ; left
+  MOVE {notes, Y}, #255
+  MOVE {notes+1, Y}, #Sprite::NoteLeft
+  MOVE {notes+2, Y}, #PAL0
+  MOVE {notes+3, Y}, #0
+
+  ;right
+  MOVE {notes+4, Y}, #255
+  MOVE {notes+5, Y}, #Sprite::NoteRight
+  MOVE {notes+6, Y}, #PAL0
+  MOVE {notes+7, Y}, #0
+
+  inx
+  cpx #MAX_NOTES
+  bcc @set_note
 
   ; Setup judgement sprites
 
@@ -131,7 +153,7 @@ gameplay:
   sta live_notes_tail_index
 
   note_queue = live_notes_lanes
-  ldx #(QUEUE_LEN * 6)
+  ldx #(MAX_NOTES * 6)
   :
     sta note_queue, X
     dex
@@ -311,18 +333,35 @@ gameplay:
   rts
 .endproc
 
-; Decrement the scroll Y by SCROLL_SPEED.
+; Scroll all of the notes by SCROLL_SPEED.
 .proc inc_scroll
-  sec
-  lda scroll_y
-  sbc #SCROLL_SPEED
-  sta scroll_y
-  bcs :+ ; if scroll_y underflowed
-    MOVE scroll_y, #(240 - SCROLL_SPEED)
-    lda scroll_nt ; If scroll Y rolls over, toggle the Y nametable bit
-    eor #$02
-    sta scroll_nt
-:
+  ldx live_notes_head_index
+
+@move_note:
+  cpx live_notes_tail_index
+  beq @done
+
+  ; If the note has been hit already, we don't want to move it,
+  ; since it should be off screen.
+  lda live_notes_hit, X
+  bne @skip
+  
+  txa
+  asl
+  asl
+  asl
+  tay
+
+  lda notes, Y
+  adc #SCROLL_SPEED
+  
+  sta notes, Y
+  sta notes+4, Y
+  
+@skip:
+  INX_WRAP #MAX_NOTES
+  jmp @move_note
+@done:
   rts
 .endproc
 
@@ -376,15 +415,11 @@ loop:
   MOVE {live_notes_timing2, X}, timing2
   MOVE {live_notes_timing3, X}, timing3
   MOVE {live_notes_hit, X}, #0
-  
-  ; Compute the scroll tile Y
-  jsr scroll_position
-  sta live_notes_nt_y, X
-  tay ; Also move this into the Y register for drawing tiles
 
-  INC_WRAP live_notes_tail_index, #QUEUE_LEN
+  INC_WRAP live_notes_tail_index, #MAX_NOTES
 
   lda lanes
+  ldy #0
   jsr draw_note
 
   jmp loop
@@ -401,104 +436,49 @@ end:
   rts
 .endproc
 
-.macro DRAW_NOTE_IMPL name, left_tile, middle_tile, right_tile
-; Draws a single note. 
+; Draws a single note (positions the sprite at the correct coordinates)
 ; ---Parameters---
-; A - The lane byte of the note.
-; Y - The Y coordinate to draw it at
-.proc name
-  lanes = t1
-  note_start = s1
-  note_end = s2
-  ; Save this argument first
-  sta lanes
+; X - The index of the note in the note queue
+; Y - the Y coordinate to draw it at.
+.proc draw_note
+  @lane = t1
+  @note_x = t2
 
-  ; Save registers
-  PUSH s1
-  PUSH s2
-
-  ; The left most end point is the top 4 bits (lanes >> 4)
-  lda lanes
-  lsr
-  lsr
-  lsr
-  lsr
-  ; Multiplied by 2
-  asl
-  adc #LANE_X ; Then add the X offset of the playfield
-  sta note_start
-  ; The right end point is the bottom 4 bits 
-  inc lanes ; First add 1 to make it inclusive
-  lda lanes ; Then mask off the bottom 4 bits
-  and #$0F 
-  asl       ; Multiplied by 2
-  adc #LANE_X ; Then also add the X offset of the playfield
-  sta note_end 
-
-  ; Now we draw all of those tiles
-  ldx note_start
-  ; First start with the left edge
-  lda #left_tile
-  jsr ppu_update_tile
-  inx
-  ; Then draw the middle, that is until `note_end - 1`
-  dec note_end
-@draw_middle:  
-  cpx note_end
-  bcs @draw_right
-
-  lda #middle_tile
-  jsr ppu_update_tile
-  inx
-  jmp @draw_middle
-
-@draw_right:
-  ; Finish by drawing the right edge
-  lda #right_tile
-  jsr ppu_update_tile
-
-  POP s2
-  POP s1
-  rts
-.endproc
-.endmacro
-
-DRAW_NOTE_IMPL draw_note, Tile::NoteLeft, Tile::NoteMiddle, Tile::NoteRight
-DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
-
-; Converts the current scroll position to a nametable tile position.
-; ---Returns---
-; A - the computed tile position
-.proc scroll_position
-  tile_y = t1
-  nt_bit = t2
-
-  MOVE nt_bit, scroll_nt
-  lda scroll_y ; Divide by 8 (tile size)
-  lsr
-  lsr 
-  lsr
-  sta tile_y
+  ; Read the lane byte
+  MOVE @lane, {live_notes_lanes, X}
   
-  ; If we're on tile 0 of a nametable, flip the nametable bit, set to 29 (last row of a nametable)
-  cmp #0
-  bne :+
-    lda nt_bit
-    eor #$02
-    sta nt_bit
-    MOVE tile_y, #29
-:
-  ; If we're on nametable $2800, then we need to add 64 as an offset
-  lda nt_bit
-  beq :+
-    lda tile_y
-    clc
-    adc #64
-    sta tile_y
-:
+  ; Compute the sprite offset of this note
+  txa
+  asl
+  asl
+  asl
+  tax
 
-  lda tile_y
-  rts
+  ; Position should be (LANE_X * TILE_WIDTH) + lane * 16
+  MOVE @note_x, #(LANE_X * TILE_WIDTH)
+  lda @lane
+  asl
+  asl
+  asl
+  asl
+  clc
+  adc @note_x
+
+  ; Write the note X coordinates, while we have it in the A register
+  sta notes+3, X ; Left note
+  adc #8
+  sta notes+7, X ; Right note
+
+  tya
+  ; Then write the Y coordinates
+  sta notes, X
+  sta notes+4, X
+
+  ; TODO: Color these?
+  ; MOVE {notes+2, X}, #PAL0
+  ; MOVE {notes+6, X}, #PAL0
+
+  rts 
 .endproc
 
 ; Processes force misses.
@@ -523,15 +503,14 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   bcc @end
   ; Delete the note and remove from the queue.
   lda live_notes_lanes, X
-  ldy live_notes_nt_y, X
-  jsr clear_note
+
   ; Missed, so break combo
   LOAD16 combo, #$00, #$00
   INC16 misses
   jsr draw_miss
   jsr draw_combo
 @increment:
-  INC_WRAP live_notes_head_index, #QUEUE_LEN
+  INC_WRAP live_notes_head_index, #MAX_NOTES
   bne @loop
 @end:
 
@@ -564,42 +543,32 @@ DRAW_NOTE_IMPL clear_note, Tile::Blank, Tile::Blank, Tile::Blank
   jsr check_note_timing
   bcs @end
 
-  ; end >= hit_lane
-
-  ; Check if the hit falls within the note
-  ; First check that hit_lane <= end
   lda live_notes_lanes, X
-  and #$0F
-  sta temp
   cmp hit_lane
-  bcc @next
-  ; Then check that hit_lane >= start
-  lda live_notes_lanes, X
-  lsr
-  lsr
-  lsr
-  lsr
-  sta temp
-  lda hit_lane
-  cmp temp
-  bcc @next
+  bne @next
   
   ; If we get here, then the note should be hit
   jsr calc_note_judgement
 
   ; Set hit to true
   MOVE {live_notes_hit, X}, #1
-  ; Clear the note
-  lda live_notes_lanes, X
-  ldy live_notes_nt_y, X
-  jsr clear_note
+
+  ; Clear the note by moving it off screen.
+  txa
+  asl
+  asl
+  asl
+  tay
+  MOVE {notes, Y}, #255
+  MOVE {notes+4, Y}, #255
+
   ; Draw the new combo
   jsr draw_combo
   ; Break from the loop
   jmp @end
 
 @next:
-  INC_WRAP index, #QUEUE_LEN
+  INC_WRAP index, #MAX_NOTES
   jmp @loop
   
 @end:

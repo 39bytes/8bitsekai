@@ -91,9 +91,11 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
   nt_update_len: .res 1
   palette:       .res 32
 
+
 .segment "OAM"
+MAX_NOTES = 20
   oam:
-    sprite0: .res 4
+    notes: .res (MAX_NOTES * 8)
     gameplay_cursor: .res 24
     combo_text: .res 16
     judgement_text: .res 28
@@ -217,13 +219,14 @@ nmi:
   MOVE nt_update_len, #0
 
 @scroll:
-  lda scroll_nt
+  lda #0
   ora #(NMI_ENABLE | SPRITE_PT_RIGHT) ; Append other flags
   sta PPUCTRL
   lda PPUSTATUS      ; Clear write latch
-  lda #0        ; X coordinate for first write, always 0
+  ; Not using nametable scrolling, so just always set these to 0
+  lda #0        ; X coordinate for first write
   sta PPUSCROLL 
-  lda scroll_y  ; Y coordinate for second write
+  lda #0        ; Y coordinate for second write
   sta PPUSCROLL
   MOVE PPUMASK, #(ENABLE_SPRITES | ENABLE_BG | SHOW_SPRITES_LEFT | SHOW_BG_LEFT) ; Enable rendering
 
