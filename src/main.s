@@ -96,7 +96,6 @@ INES_SRAM   = 0 ; Battery backed RAM on cartridge
 MAX_NOTES = 20
   oam:
     notes: .res (MAX_NOTES * 8)
-    gameplay_cursor: .res 24
     combo_text: .res 16
     judgement_text: .res 28
 
@@ -247,7 +246,7 @@ irq:
 default_palette:
   ; Background Palette
   .byte $0f, $00, $10, $30
-  .byte $0f, $00, $00, $00
+  .byte $0f, $1C, $25, $21
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
 

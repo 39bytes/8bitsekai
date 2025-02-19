@@ -7,8 +7,9 @@
 
 .enum Tile
   Blank = $00
-  LaneDark = $02
-  LaneCursor = $03
+  CursorLane = $01
+  CursorLeft = $02
+  CursorRight = $03
   NoteLeft = $04
   NoteMiddle = $05
   NoteRight = $06
@@ -120,10 +121,17 @@
 .endproc
 
 .macro DRAW_TILE tile_id, tile_x, tile_y
-  lda #tile_id
-  ldx #tile_x
-  ldy #tile_y
+  lda tile_id
+  ldx tile_x
+  ldy tile_y
   jsr ppu_update_tile
+.endmacro
+
+.macro SET_TILE tile_id, tile_x, tile_y
+  lda tile_id
+  ldx tile_x
+  ldy tile_y
+  jsr ppu_set_tile
 .endmacro
 
 ; Update a byte in the nametable
@@ -220,7 +228,6 @@
   ldy low_byte
   pla
   jsr ppu_update_byte
-
   rts
 .endproc
 

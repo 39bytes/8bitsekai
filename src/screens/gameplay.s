@@ -39,9 +39,10 @@ SCREEN_WIDTH = 256
 SCREEN_HEIGHT = 208
 TILE_WIDTH = 8
 CURSOR_WIDTH = 2 ; Lane width of the cursor
+CURSOR_Y = 24    ; Where the cursor is positioned
 N_LANES = 6      ; Total number of lanes
 LANE_WIDTH = 2   ; Tile width of 1 lane
-LANE_X = 6       ; X position of the start of the lanes
+LANE_X = 8       ; X position of the start of the lanes
 SCROLL_SPEED = 4 ; Vertical scroll speed
 
 ; TODO: Dynamically calculate this
@@ -72,10 +73,34 @@ gameplay:
   jsr draw_playfield
   
   ; Setup cursor sprite
-  SET_SPRITE gameplay_cursor, #196, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #128 
-  SET_SPRITE gameplay_cursor+4, #196, #Sprite::CursorLeft, #(BEHIND_BACKGROUND | PAL1), #136
-  SET_SPRITE gameplay_cursor+8, #196, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #144
-  SET_SPRITE gameplay_cursor+12, #196, #Sprite::CursorMiddle, #(BEHIND_BACKGROUND | PAL1), #152
+  lda #Tile::CursorLane
+  ldx #LANE_X
+  ldy #24 
+@set_cursor_tiles:
+  jsr ppu_set_tile
+  inx
+  cpx #(LANE_X + LANE_WIDTH * N_LANES)
+  bcc @set_cursor_tiles
+
+  lda #%01010101
+  ldx #LANE_X
+  ldy #24
+  jsr ppu_update_attribute
+
+  lda #%01010101
+  ldx #LANE_X+4
+  ldy #24
+  jsr ppu_update_attribute
+
+  lda #%01010101
+  ldx #LANE_X+8
+  ldy #24
+  jsr ppu_update_attribute
+
+  SET_TILE #Tile::CursorLeft, #(LANE_X + CURSOR_WIDTH * LANE_WIDTH), #CURSOR_Y
+  SET_TILE #Tile::CursorLeft, #(LANE_X + CURSOR_WIDTH * LANE_WIDTH + 1), #CURSOR_Y
+  SET_TILE #Tile::CursorRight, #(LANE_X + CURSOR_WIDTH * LANE_WIDTH + 2), #CURSOR_Y
+  SET_TILE #Tile::CursorRight, #(LANE_X + CURSOR_WIDTH * LANE_WIDTH + 3), #CURSOR_Y
 
   ; Setup combo sprites
   SET_SPRITE combo_text, #112, #'0', #PAL0, #200
@@ -251,13 +276,17 @@ gameplay:
 @check_left:
   IS_JUST_PRESSED BUTTON_LEFT
   beq @skip_left
+    jsr clear_cursor
     SUB_WRAP gameplay_cursor_position, #2, #(N_LANES-2) ; Move the cursor left
+    jsr update_cursor_position
 @skip_left:
 
 @check_right:
   IS_JUST_PRESSED BUTTON_RIGHT
   beq @skip_right
+    jsr clear_cursor
     ADD_WRAP gameplay_cursor_position, #2, #(N_LANES) ; Move the cursor right 
+    jsr update_cursor_position
 @skip_right:
 
 @check_a:
@@ -275,32 +304,50 @@ gameplay:
 @skip_b:
 
 @update:
-  jsr update_cursor_position
   MOVE last_frame_buttons, buttons
   rts
 .endproc
 
-.proc update_cursor_position
-  ; Cursor should be placed at LANE_START + (cursor_pos * 8)
+; Clears the cursor.
+.proc clear_cursor
   lda gameplay_cursor_position
   asl
-  asl
-  asl
+  clc
+  adc #LANE_X
+  tax
+
+  lda #Tile::CursorLane
+  ldy #CURSOR_Y
+
+  jsr ppu_update_tile
+  inx
+  jsr ppu_update_tile
+  inx
+  jsr ppu_update_tile
+  inx
+  jsr ppu_update_tile
+
+  rts
+.endproc
+
+.proc update_cursor_position
+  lda gameplay_cursor_position
   asl
   clc
-  adc #(LANE_X * TILE_WIDTH)
+  adc #LANE_X
+  tax
 
-  sta gameplay_cursor+3 
-  adc #8
-  sta gameplay_cursor+7
-  adc #8
-  sta gameplay_cursor+11
-  adc #8
-  sta gameplay_cursor+15
-  adc #8
-  sta gameplay_cursor+19
-  adc #8
-  sta gameplay_cursor+23
+  lda #Tile::CursorLeft
+  ldy #CURSOR_Y
+
+  jsr ppu_update_tile
+  inx
+  jsr ppu_update_tile
+  inx
+  lda #Tile::CursorRight
+  jsr ppu_update_tile
+  inx
+  jsr ppu_update_tile
 
   rts
 .endproc
