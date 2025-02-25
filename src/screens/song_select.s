@@ -1,27 +1,44 @@
 ; ===============
 ; | Song Select |
 ; ===============
+
+.segment "BSS"
+  menu_cursor_index:    .res 1
+  cur_chart:            .res 2
+  cur_song:             .res 2
+
+.segment "CODE"
 str_song_select: .asciiz "Song Select"
 
 ; Songs
 str_lower:	.asciiz "Lower"
-str_mesmerizer: .asciiz "Mesmerizer"
-str_senbonzakura: .asciiz "Senbonzakura"
-str_rokuchounen: .asciiz "6 Trillion Years"
+str_6_trillion: .asciiz "6 Trillion Years"
 
-N_MENU_ITEMS = 4
 MENU_X = 8
 MENU_Y = 9
+N_MENU_ITEMS = 2
 
 menu_item_labels:
   .addr str_lower      
-  .addr str_mesmerizer 
-  .addr str_senbonzakura
-  .addr str_rokuchounen
+  .addr str_6_trillion
 
-menu_item_addrs:
+menu_item_charts:
+  .addr chart_lower
+  .addr chart_6_trillion
+
+menu_item_songs:
+  .addr music_data_lower_short_ver
+  .addr music_data_6_trillion_years_and_overnight_story
+  
 
 song_select:
+  lda #0
+  sta menu_cursor_index
+  sta cur_chart
+  sta cur_chart+1
+  sta cur_song
+  sta cur_song+1
+
   ; Clear the background first
   jsr ppu_disable_rendering
   jsr clear_background
@@ -30,38 +47,43 @@ song_select:
   DRAW_STRING_IMM str_song_select, #10, #6
   jsr draw_songs_list
 @loop:
-  ; Clear the current cursor position
-  ldx #(MENU_X - 1)
-  lda #MENU_Y
-  clc
-  adc menu_cursor_position
-  tay
-  lda #Tile::Blank
-  jsr ppu_update_tile
-
   ; Input handling
   jsr poll_input
 
   IS_JUST_PRESSED BUTTON_UP
   beq @skip_up
-    DEC_WRAP menu_cursor_position, #(N_MENU_ITEMS-1)
+    jsr clear_cursor
+    DEC_WRAP menu_cursor_index, #(N_MENU_ITEMS-1)
+    jsr draw_cursor
 @skip_up:
 
   IS_JUST_PRESSED BUTTON_DOWN
   beq @skip_down
-    INC_WRAP menu_cursor_position, #N_MENU_ITEMS
+    jsr clear_cursor
+    INC_WRAP menu_cursor_index, #N_MENU_ITEMS
+    jsr draw_cursor
 @skip_down:
 
   IS_JUST_PRESSED BUTTON_START
   beq @skip_start
-    ; TODO: make the selection actually mean something
+    ; i * sizeof(addr)
+    lda menu_cursor_index
+    asl
+    tax
+
+    ; chart = menu_item_charts[i]
+    ; song = menu_item_songs[i]
+    MOVE cur_chart, {menu_item_charts, X}
+    MOVE cur_song, {menu_item_songs, X}
+    inx
+    MOVE cur_chart+1, {menu_item_charts, X}
+    MOVE cur_song+1, {menu_item_songs, X}
+
     MOVE last_frame_buttons, buttons
     jmp gameplay
 @skip_start:
 
   MOVE last_frame_buttons, buttons
-
-  jsr draw_cursor
 
   jsr ppu_update
   jmp @loop
@@ -98,14 +120,28 @@ song_select:
   rts
 .endproc
 
-; Draws the song select cursor.
+; Clears cursor tile.
+.proc clear_cursor
+  ; Clear the current cursor position
+  ldx #(MENU_X - 1)
+  lda #MENU_Y
+  clc
+  adc menu_cursor_index
+  tay
+  lda #Tile::Blank
+
+  jsr ppu_update_tile
+  rts
+.endproc
+
+; Draws the cursor tile.
 ; Clobbers A, X, Y
 .proc draw_cursor
   ldx #(MENU_X - 1)
-  ; y = 8 + menu_cursor_position
+  ; y = 8 + menu_cursor_index
   lda #MENU_Y
   clc
-  adc menu_cursor_position
+  adc menu_cursor_index
   tay
 
   lda #'>'

@@ -202,6 +202,50 @@
   ADD24B var, var, #$01, #$00, #$00
 .endmacro
 
+; ---Parameters---
+; A - first num
+; X - second num
+; ---Returns---
+; A - Product
+.proc mul
+  ; 0 edge case
+  cpx #0
+  bne :+
+    lda #0
+    rts
+:
+  sta t1
+
+  clc
+@loop:
+  adc t1
+  dex
+  bne @loop
+@end:
+  rts
+.endproc
+
+; ---Parameters---
+; A - first num
+; X - second num
+; ---Returns---
+; A - quotient
+.proc div
+  pha
+  MOVE t1, #0
+  stx t2
+  
+  pla
+  sec
+@loop:
+  sbc t2
+  cmp t2
+  bcc @loop
+
+  lda t1
+  rts
+.endproc
+
 
 ; Convert a byte to an unpacked binary coded decimal representation
 ; ---Parameters---

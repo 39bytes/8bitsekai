@@ -273,6 +273,11 @@ main:
 .include "screens/gameplay.s"
 .include "screens/score.s"
 
-song_lower:
-  .include "../assets/8bit_lower_short_ver.s"
+; Chart data
+
+.include "../assets/charts/lower/8bit_lower_short_ver.s"
+chart_lower: .include "../assets/charts/lower/chart.bin"
+
+.include "../assets/charts/6trillion/8bit_6_trillion_years_and_overnight_story.s"
+chart_6_trillion: .include "../assets/charts/6trillion/chart.bin"
 

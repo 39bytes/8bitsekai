@@ -1,6 +1,16 @@
 ; ============
 ; | Gameplay |
 ; ============
+;
+SCREEN_WIDTH = 256
+SCREEN_HEIGHT = 208
+TILE_WIDTH = 8
+CURSOR_WIDTH = 2 ; Lane width of the cursor
+CURSOR_Y = 24    ; Where the cursor is positioned
+N_LANES = 6      ; Total number of lanes
+LANE_WIDTH = 2   ; Tile width of 1 lane
+LANE_X = 8       ; X position of the start of the lanes
+SCROLL_SPEED = 4 ; Vertical scroll speed
 
 .segment "ZEROPAGE"
   frame: .res 2 ; The current frame count
@@ -34,16 +44,14 @@
   ; TODO: Waste less space with this
   live_notes_hit:        .res MAX_NOTES
 
-
-SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 208
-TILE_WIDTH = 8
-CURSOR_WIDTH = 2 ; Lane width of the cursor
-CURSOR_Y = 24    ; Where the cursor is positioned
-N_LANES = 6      ; Total number of lanes
-LANE_WIDTH = 2   ; Tile width of 1 lane
-LANE_X = 8       ; X position of the start of the lanes
-SCROLL_SPEED = 4 ; Vertical scroll speed
+.segment "BSS"
+  ; --- Static chart data ---
+  spawn_diff:         .res 2 ;
+  perfect_diff:       .res 1 ;
+  great_diff:         .res 1 ;
+  good_diff:          .res 1 ;
+  great_diff:         .res 1 ;
+  great_diff:         .res 1 ;
 
 ; TODO: Dynamically calculate this
 BPM = 4
@@ -103,12 +111,14 @@ gameplay:
   SET_TILE #Tile::CursorRight, #(LANE_X + CURSOR_WIDTH * LANE_WIDTH + 3), #CURSOR_Y
 
   ; Setup combo sprites
+  ; TODO: convert to background
   SET_SPRITE combo_text, #112, #'0', #PAL0, #200
   SET_SPRITE combo_text+4, #112, #'0', #PAL0, #208
   SET_SPRITE combo_text+8, #112, #'0', #PAL0, #216
   SET_SPRITE combo_text+12, #112, #'0', #PAL0, #224
 
   ; Setup judgement sprites
+  ; TODO: convert to background
   SET_SPRITE judgement_text, #128, #0, #PAL0, #0
   SET_SPRITE judgement_text+4, #128, #0, #PAL0, #0
   SET_SPRITE judgement_text+8, #128, #0, #PAL0, #0
@@ -141,8 +151,6 @@ gameplay:
   inx
   cpx #MAX_NOTES
   bcc @set_note
-
-  ; Setup judgement sprites
 
   MOVE gameplay_cursor_position, #2
 
@@ -184,14 +192,29 @@ gameplay:
 
   ; Setup scroll Y to bottom of screen initially
   MOVE scroll_y, #239 
+    
   ; Compute map relevant information
-  lda chart ; Read BPM and convert it to timing units
+  ldy #0
+  lda (chart), Y ; Read BPM and convert it to timing units
   clc
   rol
   sta frame_units 
-  MOVE24 chart_length, {chart+1}      ; BPM is followed by the chart length
-  MOVE16 chart_total_notes, {chart+4} ; followed by the number of notes
-  LOAD16 note_ptr, #<(chart+6), #>(chart+6) ; Set the note pointer
+
+  ; BPM is followed by the chart length 
+  iny
+  MOVE chart_length, {(chart), Y}
+  iny
+  MOVE chart_length+1, {(chart), Y}
+  iny
+  MOVE chart_length+2, {(chart), Y}
+
+  ; Then the total note count...
+  MOVE chart_total_notes, {(chart), Y}
+  iny
+  MOVE chart_total_notes+1, {(chart), Y}
+  
+  ; Set the note pointer to the start of the notes (6 bytes after the beginning)
+  ADD16B note_ptr, chart, #$06, #$00
 
   ; Play music
   lda #1
