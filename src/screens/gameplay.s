@@ -50,28 +50,12 @@ SCROLL_SPEED = 4 ; Vertical scroll speed
   perfect_diff:       .res 1 ;
   great_diff:         .res 1 ;
   good_diff:          .res 1 ;
-  great_diff:         .res 1 ;
-  great_diff:         .res 1 ;
+  bad_diff:           .res 1 ;
+  miss_diff:          .res 1 ;
+  ignore_diff:        .res 1 ;
 
-; TODO: Dynamically calculate this
-BPM = 4
-; How many timing units ahead we should spawn the note?
-SPAWN_DIFF = SCREEN_HEIGHT / SCROLL_SPEED * BPM * 2 
-; How many timing units should have passed before force missing a live note?
-PERFECT_DIFF = (BPM * 2) * 2
-GREAT_DIFF = (BPM * 2) * 4
-GOOD_DIFF = (BPM * 2) * 6
-BAD_DIFF = (BPM * 2) * 8
-MISS_DIFF = (BPM * 2) * 10
-IGNORE_DIFF = (BPM * 2) * 15
 
 .segment "CODE"
-
-str_gameplay: .asciiz "Gameplay"
-
-chart:
-  .incbin "../assets/chart.bin"
-
 gameplay:
   ; Clear draw buffer
   MOVE nt_update_len, #0
@@ -192,34 +176,47 @@ gameplay:
 
   ; Setup scroll Y to bottom of screen initially
   MOVE scroll_y, #239 
+
+  MOVE16 ptr, cur_chart
     
   ; Compute map relevant information
   ldy #0
-  lda (chart), Y ; Read BPM and convert it to timing units
+  lda (ptr), Y ; Read BPM and convert it to timing units
   clc
   rol
   sta frame_units 
 
   ; BPM is followed by the chart length 
   iny
-  MOVE chart_length, {(chart), Y}
+  MOVE chart_length, {(ptr), Y}
   iny
-  MOVE chart_length+1, {(chart), Y}
+  MOVE chart_length+1, {(ptr), Y}
   iny
-  MOVE chart_length+2, {(chart), Y}
+  MOVE chart_length+2, {(ptr), Y}
 
   ; Then the total note count...
-  MOVE chart_total_notes, {(chart), Y}
+  MOVE chart_total_notes, {(ptr), Y}
   iny
-  MOVE chart_total_notes+1, {(chart), Y}
+  MOVE chart_total_notes+1, {(ptr), Y}
   
   ; Set the note pointer to the start of the notes (6 bytes after the beginning)
-  ADD16B note_ptr, chart, #$06, #$00
+  ADD16B note_ptr, ptr, #$06, #$00
+
+  ; How many timing units should have passed before force missing a live note?
+  MUL perfect_diff, frame_units, #2
+  MUL great_diff, frame_units, #4
+  MUL good_diff, frame_units, #6
+  MUL bad_diff, frame_units, #8
+  MUL miss_diff, frame_units, #10
+  MUL ignore_diff, frame_units, #15
+
+  ; How many timing units ahead we should spawn the note?
+  MUL16 spawn_diff, #(SCREEN_HEIGHT / SCROLL_SPEED), frame_units
 
   ; Play music
   lda #1
-  ldx #<music_data_lower_short_ver
-  ldy #>music_data_lower_short_ver
+  ldx cur_song
+  ldy cur_song+1
   jsr famistudio_init
   lda #0
   jsr famistudio_music_play
@@ -462,7 +459,7 @@ loop:
   SUB24 t1_24, timing1, timer ; compute timing - timer
   ; Notes are in chronological order so if timing - timer > SPAWN_DIFF then
   ; it's too early for this one so we can just return early
-  CMP24B t1_24, #<SPAWN_DIFF, #>SPAWN_DIFF, #$00 ; compare with SPAWN_DIFF
+  CMP24B t1_24, spawn_diff, spawn_diff+1, #$00 ; compare with SPAWN_DIFF
   bcs end
   ; If we get here, then the note should be spawned
   ; so commit the mem_offset change and increment the note counter
@@ -560,7 +557,7 @@ end:
   bmi @end
   ; Here, the note has passed the timing point, so check if 
   ; difference >= MISS_DIFF
-  CMP24B t1_24, #MISS_DIFF, #0, #0
+  CMP24B t1_24, miss_diff, #0, #0
   bcc @end
   ; Delete the note and remove from the queue.
   lda live_notes_lanes, X
@@ -646,13 +643,13 @@ end:
 :
   ; If the note we're looking at is too early, then the rest must be later so just break
   ; TODO: Handle early hit better 
-  CMP24B t2_24, #<IGNORE_DIFF, #>IGNORE_DIFF, #$00
+  CMP24B t2_24, ignore_diff, ignore_diff+1, #$00
   rts
 .endproc
 
 .proc calc_note_judgement
 @miss:
-  CMP24B t2_24, #<MISS_DIFF, #>MISS_DIFF, #$00
+  CMP24B t2_24, miss_diff, miss_diff+1, #$00
   bcc @bad
   ; If we missed, then break combo...
   INC16 misses             
@@ -660,19 +657,19 @@ end:
   jsr draw_miss
   rts ; Then early return, because we don't want to increment the combo again
 @bad:
-  CMP24B t2_24, #<BAD_DIFF, #>BAD_DIFF, #$00
+  CMP24B t2_24, bad_diff, bad_diff+1, #$00
   bcc @good
   INC16 bad_hits
   jsr draw_bad
   jmp @hit
 @good:
-  CMP24B t2_24, #<GOOD_DIFF, #>GOOD_DIFF, #$00
+  CMP24B t2_24, good_diff, good_diff+1, #$00
   bcc @great
   INC16 good_hits
   jsr draw_good
   jmp @hit
 @great:
-  CMP24B t2_24, #<GREAT_DIFF, #>GREAT_DIFF, #$00
+  CMP24B t2_24, great_diff, great_diff+1, #$00
   bcc @perfect
   INC16 great_hits
   jsr draw_great

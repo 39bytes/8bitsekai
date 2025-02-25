@@ -225,6 +225,43 @@
   rts
 .endproc
 
+.macro MUL res, lhs, rhs
+  lda lhs
+  ldx rhs
+  jsr mul
+  sta res
+.endmacro
+
+; ---Parameters---
+; A - first num
+; X - second num
+; ---Returns---
+; r1_16 - result
+.proc mul16
+  LOAD16 r1_16, #$00, #$00
+  ; 0 edge case
+  cpx #0
+  bne :+
+    rts
+:
+  sta t1
+
+  clc
+@loop:
+  ADD16B r1_16, r1_16, t1, #$00
+  dex
+  bne @loop
+@end:
+  rts
+.endproc
+
+.macro MUL16 res, lhs, rhs
+  lda lhs
+  ldx rhs
+  jsr mul16
+  MOVE16 res, r1_16
+.endmacro
+
 ; ---Parameters---
 ; A - first num
 ; X - second num

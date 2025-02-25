@@ -52,16 +52,16 @@ song_select:
 
   IS_JUST_PRESSED BUTTON_UP
   beq @skip_up
-    jsr clear_cursor
+    jsr clear_song_select_cursor
     DEC_WRAP menu_cursor_index, #(N_MENU_ITEMS-1)
-    jsr draw_cursor
+    jsr draw_song_select_cursor
 @skip_up:
 
   IS_JUST_PRESSED BUTTON_DOWN
   beq @skip_down
-    jsr clear_cursor
+    jsr clear_song_select_cursor
     INC_WRAP menu_cursor_index, #N_MENU_ITEMS
-    jsr draw_cursor
+    jsr draw_song_select_cursor
 @skip_down:
 
   IS_JUST_PRESSED BUTTON_START
@@ -121,7 +121,7 @@ song_select:
 .endproc
 
 ; Clears cursor tile.
-.proc clear_cursor
+.proc clear_song_select_cursor
   ; Clear the current cursor position
   ldx #(MENU_X - 1)
   lda #MENU_Y
@@ -136,7 +136,7 @@ song_select:
 
 ; Draws the cursor tile.
 ; Clobbers A, X, Y
-.proc draw_cursor
+.proc draw_song_select_cursor
   ldx #(MENU_X - 1)
   ; y = 8 + menu_cursor_index
   lda #MENU_Y
